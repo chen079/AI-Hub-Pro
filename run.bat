@@ -1,66 +1,78 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: è®¾ç½®çª—å£æ ‡é¢˜
 title AI Hub Pro Launcher
-
-:: é¢œè‰²è®¾ç½® (é’è‰²)
 color 0B
 
 echo ========================================================
-echo                 AI Hub Pro å¯åŠ¨ç¨‹åº
+echo                 AI Hub Pro Æô¶¯³ÌĞò
 echo ========================================================
 echo.
 
-:: 1. æ£€æŸ¥ Python æ˜¯å¦å®‰è£…
+:: ÏêÏ¸´íÎó¼ì²é
+echo [1/5] ¼ì²éPython°²×°...
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] æœªæ£€æµ‹åˆ° Pythonï¼Œè¯·å…ˆå®‰è£… Python 3.8+ å¹¶æ·»åŠ åˆ°ç¯å¢ƒå˜é‡ã€‚
+    echo [ERROR] Î´¼ì²âµ½Python£¬Çë:
+    echo   1. °²×°Python 3.8+
+    echo   2. °²×°Ê±¹´Ñ¡ "Add Python to PATH"
+    echo   3. ÖØĞÂÔËĞĞ´Ë½Å±¾
     echo.
     pause
     exit
 )
+echo [OK] Python¼ì²â³É¹¦
 
-:: 2. æ£€æŸ¥è™šæ‹Ÿç¯å¢ƒï¼Œä¸å­˜åœ¨åˆ™åˆ›å»º
+:: ¼ì²é²¢´´½¨ĞéÄâ»·¾³
+echo [2/5] ¼ì²éĞéÄâ»·¾³...
 if not exist "venv" (
-    echo [INFO] æ­£åœ¨åˆ›å»ºè™šæ‹Ÿç¯å¢ƒ (é¦–æ¬¡è¿è¡Œå¯èƒ½éœ€è¦å‡ åˆ†é’Ÿ)...
+    echo [INFO] ÕıÔÚ´´½¨ĞéÄâ»·¾³...
     python -m venv venv
     if !errorlevel! neq 0 (
-        echo [ERROR] åˆ›å»ºè™šæ‹Ÿç¯å¢ƒå¤±è´¥ã€‚
+        echo [ERROR] ĞéÄâ»·¾³´´½¨Ê§°Ü
+        echo ³¢ÊÔÊ¹ÓÃ: python -m venv --without-pip venv
         pause
         exit
     )
-    echo [INFO] è™šæ‹Ÿç¯å¢ƒåˆ›å»ºæˆåŠŸã€‚
+    echo [OK] ĞéÄâ»·¾³´´½¨³É¹¦
 ) else (
-    echo [INFO] æ£€æµ‹åˆ°ç°æœ‰è™šæ‹Ÿç¯å¢ƒã€‚
+    echo [OK] ĞéÄâ»·¾³ÒÑ´æÔÚ
 )
 
-:: 3. æ¿€æ´»è™šæ‹Ÿç¯å¢ƒ
-call venv\Scripts\activate
+:: ¼¤»îĞéÄâ»·¾³
+echo [3/5] ¼¤»îĞéÄâ»·¾³...
+if exist "venv\Scripts\activate.bat" (
+    call venv\Scripts\activate.bat
+) else (
+    echo [ERROR] ÎŞ·¨¼¤»îĞéÄâ»·¾³
+    pause
+    exit
+)
+echo [OK] ĞéÄâ»·¾³¼¤»î³É¹¦
 
-:: 4. å®‰è£…/æ£€æŸ¥ä¾èµ–
-echo [INFO] æ­£åœ¨æ£€æŸ¥å¹¶å®‰è£…ä¾èµ–...
-pip install -r requirements.txt >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] ä¾èµ–å®‰è£…å¯èƒ½å‡ºç°é—®é¢˜ï¼Œå°è¯•æ˜¾ç¤ºè¯¦ç»†ä¿¡æ¯é‡è¯•...
+:: °²×°ÒÀÀµ
+echo [4/5] °²×°ÒÀÀµ°ü...
+if exist "requirements.txt" (
     pip install -r requirements.txt
+    if !errorlevel! neq 0 (
+        echo [WARNING] ÒÀÀµ°²×°Óöµ½ÎÊÌâ
+        echo ³¢ÊÔ¼ÌĞøÆô¶¯...
+    )
 ) else (
-    echo [INFO] ä¾èµ–ç¯å¢ƒå°±ç»ªã€‚
+    echo [WARNING] Î´ÕÒµ½requirements.txtÎÄ¼ş
 )
+echo [OK] ÒÀÀµ¼ì²éÍê³É
 
-:: 5. å¯åŠ¨æœåŠ¡
+:: Æô¶¯Ó¦ÓÃ
+echo [5/5] Æô¶¯AI Hub Pro...
 echo.
-echo [SUCCESS] ç³»ç»Ÿå¯åŠ¨ä¸­...
-echo [INFO] æœåŠ¡åœ°å€: http://127.0.0.1:5000
-echo.
-echo è¯·ä¸è¦å…³é—­æ­¤çª—å£ã€‚æŒ‰ä¸‹ Ctrl+C å¯åœæ­¢æœåŠ¡ã€‚
+echo [INFO] ·şÎñµØÖ·: http://127.0.0.1:5000
+echo Çë²»Òª¹Ø±Õ´Ë´°¿Ú£¬°´Ctrl+CÍ£Ö¹·şÎñ
 echo ========================================================
 
-:: è‡ªåŠ¨æ‰“å¼€æµè§ˆå™¨ (ç­‰å¾…2ç§’è®©Flaskå…ˆå¯åŠ¨)
-timeout /t 2 /nobreak >nul
+timeout /t 3 /nobreak >nul
 start http://127.0.0.1:5000
 
-:: è¿è¡Œ Flask åº”ç”¨
 python app.py
 
 pause
