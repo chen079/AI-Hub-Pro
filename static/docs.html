@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hub Pro - 用户使用文档</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdn.staticfile.org/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* 代码块样式 */
+        pre { background-color: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-family: monospace; }
+        code { font-family: monospace; }
+        .inline-code { background-color: #f1f5f9; color: #ef4444; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.9em; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased">
+
+    <!-- 顶部导航 -->
+    <header class="fixed top-0 w-full bg-white/90 backdrop-blur border-b border-gray-200 z-50 h-16 flex items-center shadow-sm">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <span class="font-bold text-xl tracking-tight text-gray-900">AI Hub Pro <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded ml-2">Docs</span></span>
+            </div>
+            <a href="http://127.0.0.1:5000" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">
+                打开应用 <i class="fas fa-external-link-alt ml-1"></i>
+            </a>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex flex-col lg:flex-row gap-8">
+        
+        <!-- 左侧目录导航 (Desktop Sticky) -->
+        <aside class="hidden lg:block w-64 flex-shrink-0">
+            <div class="sticky top-24 space-y-1">
+                <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">目录</p>
+                <a href="#intro" class="block px-3 py-2 text-sm font-medium text-gray-900 rounded-md bg-blue-50 text-blue-700">1. 项目简介</a>
+                <a href="#install" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">2. 安装与启动</a>
+                <a href="#config" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">3. API 配置 (核心)</a>
+                <a href="#usage" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">4. 功能使用指南</a>
+                <a href="#advanced" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">5. 高级技巧</a>
+                <a href="#faq" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">6. 常见问题</a>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 max-w-4xl bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-12">
+            
+            <!-- 1. 简介 -->
+            <section id="intro" class="mb-12 scroll-mt-24">
+                <h1 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">1. 项目简介</h1>
+                <p class="text-gray-600 leading-relaxed mb-4">
+                    <strong>AI Hub Pro</strong> 是一个现代化的 AI 模型聚合客户端。它允许你通过一个统一的界面，连接并使用市面上几乎所有的 AI 模型（如 GPT-4, Claude 3.5, DeepSeek, Midjourney 等）。
+                </p>
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md">
+                    <p class="text-sm text-blue-700">
+                        <i class="fas fa-info-circle mr-1"></i> 
+                        本项目不提供 AI 模型服务，而是作为“连接器”。你需要自备 API Key（支持 OneAPI/NewAPI 等中转服务）。
+                    </p>
+                </div>
+            </section>
+
+            <!-- 2. 安装 -->
+            <section id="install" class="mb-12 scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">2</span> 安装与启动</h2>
+                
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">方式一：Windows 一键启动 (推荐)</h3>
+                <p class="text-gray-600 mb-3">直接在项目根目录下双击运行 <span class="inline-code">run.bat</span> 脚本。</p>
+                <ul class="list-disc list-inside text-gray-600 mb-6 space-y-1 ml-2">
+                    <li>它会自动检测 Python 环境。</li>
+                    <li>自动创建虚拟环境并安装依赖。</li>
+                    <li>自动打开浏览器访问系统。</li>
+                </ul>
+
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">方式二：手动启动 (Mac/Linux)</h3>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">1. 安装依赖</p>
+                        <pre>pip install -r requirements.txt</pre>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">2. 启动服务</p>
+                        <pre>python app.py</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. 配置 -->
+            <section id="config" class="mb-12 scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">3</span> API 配置</h2>
+                <p class="text-gray-600 mb-4">这是使用系统的第一步。登录后，点击左下角的头像，选择 <strong class="text-gray-800">系统设置 (Settings)</strong>。</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="border rounded-xl p-5 bg-gray-50">
+                        <h4 class="font-bold text-gray-800 mb-2">API Endpoint (接口地址)</h4>
+                        <p class="text-sm text-gray-500 mb-3">AI 服务的请求地址。</p>
+                        <ul class="text-sm text-gray-600 space-y-1">
+                            <li><strong>OpenAI 官方:</strong> <code class="text-xs">https://api.openai.com/v1</code></li>
+                            <li><strong>中转服务 (OneAPI):</strong> <code class="text-xs">https://你的域名.com/v1</code></li>
+                        </ul>
+                    </div>
+                    <div class="border rounded-xl p-5 bg-gray-50">
+                        <h4 class="font-bold text-gray-800 mb-2">API Key (密钥)</h4>
+                        <p class="text-sm text-gray-500 mb-3">以 <span class="inline-code">sk-</span> 开头的密钥串。</p>
+                        <p class="text-xs text-green-600"><i class="fas fa-lock"></i> 您的密钥在本地数据库中加密存储。</p>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 class="font-bold text-yellow-800 text-sm mb-1">💡 验证技巧</h4>
+                    <p class="text-sm text-yellow-700">
+                        填写完信息后，请务必点击 <span class="inline-block px-2 py-0.5 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700">🔌 测试连接</span> 按钮。系统会尝试连接服务器并获取模型列表，确保配置无误。
+                    </p>
+                </div>
+            </section>
+
+            <!-- 4. 功能使用 -->
+            <section id="usage" class="mb-12 scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">4</span> 功能使用指南</h2>
+
+                <div class="space-y-8">
+                    <!-- 聊天 -->
+                    <div class="flex gap-4">
+                        <div class="w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 text-xl">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">流式对话</h3>
+                            <p class="text-gray-600 text-sm mt-1">
+                                像使用 ChatGPT 一样。支持 Markdown 渲染、代码高亮。如果模型支持（如 DeepSeek R1），系统会自动折叠显示 <span class="inline-code">&lt;think&gt;</span> 深度思考过程。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 多模态 -->
+                    <div class="flex gap-4">
+                        <div class="w-12 h-12 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0 text-xl">
+                            <i class="fas fa-photo-video"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">多模态展示</h3>
+                            <p class="text-gray-600 text-sm mt-1">
+                                <strong>图片：</strong> 如果使用了 Midjourney/Dall-E 模型，图片会直接显示。<br>
+                                <strong>视频：</strong> 使用 Luma/Runway 生成的视频会自动加载播放器。<br>
+                                <strong>音频：</strong> Suno 音乐会自动加载音频条。
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 文档解析 -->
+                    <div class="flex gap-4">
+                        <div class="w-12 h-12 rounded-lg bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0 text-xl">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">文档上传 (RAG)</h3>
+                            <p class="text-gray-600 text-sm mt-1">
+                                点击输入框旁的 <i class="fas fa-paperclip text-gray-400"></i> 别针图标，上传 PDF、Word 或 TXT 文件。系统会自动解析文字内容并发给 AI，让 AI 基于文档回答问题。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. 高级技巧 -->
+            <section id="advanced" class="mb-12 scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">5</span> 高级技巧</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-4 border rounded-lg hover:shadow-md transition">
+                        <div class="text-2xl mb-2">🌑</div>
+                        <h4 class="font-bold mb-1">暗黑模式</h4>
+                        <p class="text-xs text-gray-500">在设置中可以手动切换深色/浅色主题，或让其跟随系统。</p>
+                    </div>
+                    <div class="p-4 border rounded-lg hover:shadow-md transition">
+                        <div class="text-2xl mb-2">🤖</div>
+                        <h4 class="font-bold mb-1">自定义模型</h4>
+                        <p class="text-xs text-gray-500">如果在下拉列表中找不到你的模型，可以在设置中点击“手动填写”直接输入模型 ID。</p>
+                    </div>
+                    <div class="p-4 border rounded-lg hover:shadow-md transition">
+                        <div class="text-2xl mb-2">📋</div>
+                        <h4 class="font-bold mb-1">模型概览</h4>
+                        <p class="text-xs text-gray-500">在设置中点击“概览”，可以查看按厂商分类的所有可用模型图标墙。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. FAQ -->
+            <section id="faq" class="scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">6</span> 常见问题</h2>
+                
+                <div class="space-y-4">
+                    <details class="group border rounded-lg bg-gray-50 open:bg-white open:ring-1 open:ring-blue-200 transition">
+                        <summary class="flex items-center justify-between p-4 cursor-pointer font-medium text-gray-800">
+                            <span>Q: 为什么点击“测试连接”提示 404？</span>
+                            <span class="transition group-open:rotate-180"><i class="fas fa-chevron-down text-gray-400"></i></span>
+                        </summary>
+                        <div class="px-4 pb-4 text-sm text-gray-600">
+                            通常是因为 Endpoint 地址写错了。请确保地址结尾没有多余的斜杠，且路径正确（例如 <code class="bg-gray-100 px-1 rounded">/v1</code>）。
+                        </div>
+                    </details>
+
+                    <details class="group border rounded-lg bg-gray-50 open:bg-white open:ring-1 open:ring-blue-200 transition">
+                        <summary class="flex items-center justify-between p-4 cursor-pointer font-medium text-gray-800">
+                            <span>Q: 如何在局域网内让手机访问？</span>
+                            <span class="transition group-open:rotate-180"><i class="fas fa-chevron-down text-gray-400"></i></span>
+                        </summary>
+                        <div class="px-4 pb-4 text-sm text-gray-600">
+                            修改 <code class="inline-code">app.py</code> 最后一行，将 <code class="inline-code">app.run(port=5000)</code> 改为 <code class="inline-code">app.run(host='0.0.0.0', port=5000)</code>。然后确保电脑防火墙允许 5000 端口，手机访问电脑 IP:5000 即可。
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 mt-12 py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-500 text-sm">© 2025 AI Hub Pro. Open Source under MIT License.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,330 @@
+[v-cloak] {
+    display: none !important;
+}
+
+.markdown-body p {
+    margin-bottom: 0.8em;
+    line-height: 1.7;
+}
+
+.markdown-body pre {
+    background: #f3f4f6;
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 10px 0;
+    font-size: 0.9em;
+}
+
+.markdown-body code {
+    background: #f1f5f9;
+    color: #ef4444;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.markdown-body img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 10px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.chat-image-preview {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    margin: 4px 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    object-fit: cover;
+    display: block;
+}
+
+/* 优化 Thinking 块样式 */
+details.think-block {
+    background-color: rgba(241, 245, 249, 0.5); /* light mode */
+    border-left: 3px solid #94a3b8;
+    margin: 8px 0;
+    border-radius: 4px;
+    font-size: 0.9em;
+    overflow: hidden;
+}
+
+.dark details.think-block {
+    background-color: rgba(30, 41, 59, 0.5); /* dark mode */
+    border-left-color: #475569;
+}
+
+details.think-block summary {
+    padding: 6px 10px;
+    background-color: rgba(0,0,0,0.03);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85em;
+    color: #64748b;
+    user-select: none;
+}
+
+.dark details.think-block summary {
+    color: #94a3b8;
+    background-color: rgba(255,255,255,0.03);
+}
+
+details.think-block div.content {
+    padding: 10px;
+    white-space: pre-wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: #475569;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.dark details.think-block div.content {
+    color: #cbd5e1;
+}
+
+/* 媒体容器优化 */
+.media-container {
+    margin: 10px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+}
+.media-container video {
+    width: 100%;
+    max-height: 400px;
+    display: block;
+}
+
+/* 模态框 */
+.settings-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+}
+
+.settings-modal {
+    background: white;
+    width: 90%;
+    max-width: 480px;
+    max-height: 90vh;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 输入框自适应高度 */
+textarea {
+    min-height: 24px;
+    max-height: 200px;
+}
+
+/* 瀑布流布局兼容样式 */
+.masonry-columns {
+    column-count: 1;
+    column-gap: 1.5rem;
+    /* 对应 gap-6 */
+}
+
+@media (min-width: 768px) {
+    .masonry-columns {
+        column-count: 2;
+    }
+}
+
+@media (min-width: 1024px) {
+    .masonry-columns {
+        column-count: 3;
+    }
+}
+
+/* 防止卡片在列中间断开 */
+.break-inside-avoid {
+    break-inside: avoid-column;
+    page-break-inside: avoid;
+}
+
+/* 媒体播放器样式 */
+.chat-audio-player {
+    width: 100%;
+    min-width: 240px;
+    /* 保证有足够宽度显示进度条 */
+    height: 40px;
+    margin: 8px 0;
+    border-radius: 20px;
+    outline: none;
+}
+
+.chat-video-player {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    margin: 8px 0;
+    background: black;
+    /* 视频加载前显示黑底 */
+    display: block;
+}
+
+/* 输入框底部的小预览容器 */
+.input-preview-item {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f9fafb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 3rem;
+    /* h-12 */
+    min-width: 3rem;
+}
+
+.dark .input-preview-item {
+    border-color: #4b5563;
+    background: #374151;
+}
+
+/* 修复 Markdown 内部链接样式，防止 overflow */
+.markdown-body a {
+    word-break: break-all;
+}
+
+/* =========================================
+   修复 1: 强制代码块左对齐 (解决居中问题)
+   ========================================= */
+.markdown-body pre {
+    text-align: left;
+    /* 强制内容靠左 */
+    direction: ltr;
+    /* 防止某些浏览器语言设置干扰 */
+}
+
+/* 确保 AI 发送的视频不会撑破气泡 */
+.markdown-body video {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 10px 0;
+    background: #000;
+}
+
+/* 确保 AI 发送的音频播放器宽度合适 */
+.markdown-body audio {
+    width: 100%;
+    min-width: 200px;
+    outline: none;
+}
+
+/* =========================================
+   修复 2: 暗黑模式下的代码块适配
+   ========================================= */
+/* 1. 将代码块背景变深 */
+html.dark .markdown-body pre {
+    background-color: #1e1e1e !important;
+    /* 深灰色背景 */
+    border: 1px solid #333;
+    /* 微微的边框 */
+    color: #e5e5e5;
+    /* 浅色文字 */
+}
+
+/* 2. 修复行内代码和小代码块的颜色 */
+html.dark .markdown-body code {
+    background-color: transparent;
+    /* 避免双重背景色 */
+    color: #e5e5e5;
+    /* 覆盖原本的红色/深色字体 */
+}
+
+/* 3. (可选) 如果用了 highlight.js，需要微调语法高亮的颜色 
+   这里做一个简单的反色处理，保证暗黑模式下也能看清 */
+html.dark .hljs-keyword,
+html.dark .hljs-selector-tag,
+html.dark .hljs-literal,
+html.dark .hljs-section,
+html.dark .hljs-link {
+    color: #569cd6 !important;
+    /* 蓝色关键字 */
+}
+
+html.dark .hljs-string,
+html.dark .hljs-title,
+html.dark .hljs-name,
+html.dark .hljs-type,
+html.dark .hljs-attribute,
+html.dark .hljs-symbol,
+html.dark .hljs-bullet,
+html.dark .hljs-addition,
+html.dark .hljs-variable,
+html.dark .hljs-template-tag,
+html.dark .hljs-template-variable {
+    color: #ce9178 !important;
+    /* 橙色字符串 */
+}
+
+html.dark .hljs-comment,
+html.dark .hljs-quote,
+html.dark .hljs-meta {
+    color: #6a9955 !important;
+    /* 绿色注释 */
+}
