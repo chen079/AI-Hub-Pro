@@ -47,8 +47,12 @@ const AppAPI = {
     },
 
     // 获取模型列表
-    async fetchModels() {
-        return this.request('/api/fetch_models', 'POST', {});
+    async fetchModels(endpoint, apiKey, useOfficial) {
+        return this.request('/api/fetch_models', 'POST', {
+            api_endpoint: endpoint,
+            api_key: apiKey,
+            use_official: useOfficial
+        });
     },
 
     // 上传头像
