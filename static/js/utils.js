@@ -45,7 +45,8 @@ const IconLibrary = {
         { id: 'mistral', keywords: ['mistral', 'mixtral', 'codestral'] },
         { id: 'qwen', keywords: ['qwen', 'tongyi'] },
         { id: 'grok', keywords: ['grok', 'xai'] },
-        { id: 'yi', keywords: ['yi-', '01.ai'] }
+        { id: 'yi', keywords: ['yi-', '01.ai'] },
+        { id: 'kimi', keywords: ['kimi'] },
     ],
 
     specialExtensions: {
