@@ -1,223 +1,335 @@
+--- START OF FILE docs.html ---
+
 <!DOCTYPE html>
 <html lang="zh-CN" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hub Pro - 用户使用文档</title>
+    <title>AI Hub Pro - User Manual</title>
     <link rel="icon" type="image/x-icon" href="./favicon.ico">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link href="https://cdn.staticfile.org/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* 自定义滚动条 */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* 代码块样式 */
+        /* Code Block */
         pre { background-color: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-family: monospace; }
         code { font-family: monospace; }
         .inline-code { background-color: #f1f5f9; color: #ef4444; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.9em; }
+
+        /* Language Toggle Logic */
+        body.lang-en .zh-only { display: none !important; }
+        body.lang-zh .en-only { display: none !important; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans antialiased">
+<body class="bg-gray-50 text-gray-800 font-sans antialiased lang-zh">
 
-    <!-- 顶部导航 -->
+    <!-- Header -->
     <header class="fixed top-0 w-full bg-white/90 backdrop-blur border-b border-gray-200 z-50 h-16 flex items-center shadow-sm">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-lg">
                     <i class="fas fa-robot"></i>
                 </div>
-                <span class="font-bold text-xl tracking-tight text-gray-900">AI Hub Pro <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded ml-2">Docs</span></span>
+                <span class="font-bold text-xl tracking-tight text-gray-900">
+                    AI Hub Pro <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded ml-2 border border-blue-100">Docs v2.0</span>
+                </span>
             </div>
-            <a href="http://127.0.0.1:5000" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition">
-                打开应用 <i class="fas fa-external-link-alt ml-1"></i>
-            </a>
+            <div class="flex items-center gap-4">
+                <!-- Language Switcher -->
+                <button onclick="toggleLanguage()" class="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 transition bg-gray-100 px-3 py-1.5 rounded-full">
+                    <i class="fas fa-globe"></i>
+                    <span class="zh-only">English</span>
+                    <span class="en-only">中文</span>
+                </button>
+                <a href="/" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition hidden sm:inline-block">
+                    <span class="zh-only">打开应用</span>
+                    <span class="en-only">Open App</span> 
+                    <i class="fas fa-external-link-alt ml-1"></i>
+                </a>
+            </div>
         </div>
     </header>
 
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex flex-col lg:flex-row gap-8">
         
-        <!-- 左侧目录导航 (Desktop Sticky) -->
+        <!-- Sidebar Navigation (Desktop Sticky) -->
         <aside class="hidden lg:block w-64 flex-shrink-0">
             <div class="sticky top-24 space-y-1">
-                <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">目录</p>
-                <a href="#intro" class="block px-3 py-2 text-sm font-medium text-gray-900 rounded-md bg-blue-50 text-blue-700">1. 项目简介</a>
-                <a href="#install" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">2. 安装与启动</a>
-                <a href="#config" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">3. API 配置 (核心)</a>
-                <a href="#usage" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">4. 功能使用指南</a>
-                <a href="#advanced" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">5. 高级技巧</a>
-                <a href="#faq" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">6. 常见问题</a>
+                <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    <span class="zh-only">目录</span><span class="en-only">Contents</span>
+                </p>
+                <nav class="space-y-1" id="toc">
+                    <!-- Links will be styled via JS or simple classes -->
+                    <a href="#intro" class="block px-3 py-2 text-sm font-medium text-gray-900 rounded-md bg-white border border-gray-200 shadow-sm hover:text-blue-600">
+                        <span class="zh-only">1. 项目简介</span><span class="en-only">1. Introduction</span>
+                    </a>
+                    <a href="#install" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">
+                        <span class="zh-only">2. 安装与启动</span><span class="en-only">2. Install & Start</span>
+                    </a>
+                    <a href="#config" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">
+                        <span class="zh-only">3. API 配置</span><span class="en-only">3. API Config</span>
+                    </a>
+                    <a href="#features" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">
+                        <span class="zh-only">4. 核心功能</span><span class="en-only">4. Core Features</span>
+                    </a>
+                    <a href="#settings" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">
+                        <span class="zh-only">5. 设置与优化</span><span class="en-only">5. Settings & Optimization</span>
+                    </a>
+                    <a href="#paid" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">
+                        <span class="zh-only">6. 运营与付费模式</span><span class="en-only">6. Paid Mode & Admin</span>
+                    </a>
+                    <a href="#faq" class="block px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md transition">
+                        <span class="zh-only">7. 常见问题</span><span class="en-only">7. FAQ</span>
+                    </a>
+                </nav>
             </div>
         </aside>
 
-        <!-- 主内容区 -->
+        <!-- Main Content -->
         <main class="flex-1 max-w-4xl bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-12">
             
-            <!-- 1. 简介 -->
+            <!-- 1. Intro -->
             <section id="intro" class="mb-12 scroll-mt-24">
-                <h1 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">1. 项目简介</h1>
+                <h1 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">
+                    <span class="zh-only">1. 项目简介</span><span class="en-only">1. Introduction</span>
+                </h1>
                 <p class="text-gray-600 leading-relaxed mb-4">
-                    <strong>AI Hub Pro</strong> 是一个现代化的 AI 模型聚合客户端。它允许你通过一个统一的界面，连接并使用市面上几乎所有的 AI 模型（如 GPT-4, Claude 3.5, DeepSeek, Midjourney 等）。
+                    <span class="zh-only"><strong>AI Hub Pro</strong> 是一个全栈 AI 聚合客户端。它提供了一个类似 ChatGPT 的现代化界面，支持流式对话、文档解析 (RAG)、多模态展示以及深度思考模型支持。</span>
+                    <span class="en-only"><strong>AI Hub Pro</strong> is a full-stack AI aggregation client. It offers a ChatGPT-like modern interface, supporting streamed chat, document parsing (RAG), multi-modal display, and deep reasoning models.</span>
                 </p>
                 <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md">
                     <p class="text-sm text-blue-700">
                         <i class="fas fa-info-circle mr-1"></i> 
-                        本项目不提供 AI 模型服务，而是作为“连接器”。你需要自备 API Key（支持 OneAPI/NewAPI 等中转服务）。
+                        <span class="zh-only">本项目作为连接器，您需要自备 API Key（支持 OpenAI/Claude/Gemini 等标准格式）。</span>
+                        <span class="en-only">This project acts as a connector. You need to provide your own API Key (supports OpenAI/Claude/Gemini standard formats).</span>
                     </p>
                 </div>
             </section>
 
-            <!-- 2. 安装 -->
+            <!-- 2. Install -->
             <section id="install" class="mb-12 scroll-mt-24">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">2</span> 安装与启动</h2>
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">2</span> 
+                    <span class="zh-only">安装与启动</span><span class="en-only">Installation & Startup</span>
+                </h2>
                 
-                <h3 class="text-lg font-semibold text-gray-800 mb-3">方式一：Windows 一键启动 (推荐)</h3>
-                <p class="text-gray-600 mb-3">直接在项目根目录下双击运行 <span class="inline-code">run.bat</span> 脚本。</p>
-                <ul class="list-disc list-inside text-gray-600 mb-6 space-y-1 ml-2">
-                    <li>它会自动检测 Python 环境。</li>
-                    <li>自动创建虚拟环境并安装依赖。</li>
-                    <li>自动打开浏览器访问系统。</li>
-                </ul>
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Windows (Recommended)</h3>
+                <p class="text-gray-600 mb-3">
+                    <span class="zh-only">双击运行项目根目录下的 <span class="inline-code">run.bat</span>。它会自动创建环境、安装依赖并启动浏览器。</span>
+                    <span class="en-only">Double-click <span class="inline-code">run.bat</span> in the root directory. It automatically sets up the environment, installs dependencies, and opens the browser.</span>
+                </p>
 
-                <h3 class="text-lg font-semibold text-gray-800 mb-3">方式二：手动启动 (Mac/Linux)</h3>
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Mac / Linux</h3>
                 <div class="space-y-4">
                     <div>
-                        <p class="text-sm text-gray-500 mb-1">1. 安装依赖</p>
+                        <p class="text-sm text-gray-500 mb-1">
+                            <span class="zh-only">1. 安装依赖</span><span class="en-only">1. Install Dependencies</span>
+                        </p>
                         <pre>pip install -r requirements.txt</pre>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-500 mb-1">2. 启动服务</p>
+                        <p class="text-sm text-gray-500 mb-1">
+                            <span class="zh-only">2. 启动服务</span><span class="en-only">2. Start Server</span>
+                        </p>
                         <pre>python app.py</pre>
                     </div>
                 </div>
             </section>
 
-            <!-- 3. 配置 -->
+            <!-- 3. Config -->
             <section id="config" class="mb-12 scroll-mt-24">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">3</span> API 配置</h2>
-                <p class="text-gray-600 mb-4">这是使用系统的第一步。登录后，点击左下角的头像，选择 <strong class="text-gray-800">系统设置 (Settings)</strong>。</p>
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">3</span> 
+                    <span class="zh-only">API 配置</span><span class="en-only">API Configuration</span>
+                </h2>
+                <p class="text-gray-600 mb-4">
+                    <span class="zh-only">点击左下角头像 -> <strong>系统设置</strong>。</span>
+                    <span class="en-only">Click Avatar (bottom left) -> <strong>Settings</strong>.</span>
+                </p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="border rounded-xl p-5 bg-gray-50">
-                        <h4 class="font-bold text-gray-800 mb-2">API Endpoint (接口地址)</h4>
-                        <p class="text-sm text-gray-500 mb-3">AI 服务的请求地址。</p>
+                        <h4 class="font-bold text-gray-800 mb-2">API Endpoint</h4>
+                        <p class="text-sm text-gray-500 mb-3">
+                            <span class="zh-only">接口地址，例如：</span><span class="en-only">Service URL, e.g.:</span>
+                        </p>
                         <ul class="text-sm text-gray-600 space-y-1">
-                            <li><strong>OpenAI 官方:</strong> <code class="text-xs">https://api.openai.com/v1</code></li>
-                            <li><strong>中转服务 (OneAPI):</strong> <code class="text-xs">https://你的域名.com/v1</code></li>
+                            <li><span class="inline-code">https://api.openai.com/v1</span></li>
+                            <li><span class="inline-code">https://your-oneapi-domain.com/v1</span></li>
                         </ul>
                     </div>
                     <div class="border rounded-xl p-5 bg-gray-50">
-                        <h4 class="font-bold text-gray-800 mb-2">API Key (密钥)</h4>
-                        <p class="text-sm text-gray-500 mb-3">以 <span class="inline-code">sk-</span> 开头的密钥串。</p>
-                        <p class="text-xs text-green-600"><i class="fas fa-lock"></i> 您的密钥在本地数据库中加密存储。</p>
+                        <h4 class="font-bold text-gray-800 mb-2">API Key</h4>
+                        <p class="text-sm text-gray-500 mb-3">
+                            <span class="zh-only">以 sk- 开头的密钥。</span><span class="en-only">Key starting with sk-.</span>
+                        </p>
+                        <p class="text-xs text-green-600">
+                            <i class="fas fa-lock"></i> 
+                            <span class="zh-only">已加密存储 (Fernet Encryption)</span><span class="en-only">Encrypted Storage</span>
+                        </p>
                     </div>
-                </div>
-
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h4 class="font-bold text-yellow-800 text-sm mb-1">💡 验证技巧</h4>
-                    <p class="text-sm text-yellow-700">
-                        填写完信息后，请务必点击 <span class="inline-block px-2 py-0.5 bg-white border border-gray-300 rounded text-xs font-bold text-gray-700">🔌 测试连接</span> 按钮。系统会尝试连接服务器并获取模型列表，确保配置无误。
-                    </p>
                 </div>
             </section>
 
-            <!-- 4. 功能使用 -->
-            <section id="usage" class="mb-12 scroll-mt-24">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">4</span> 功能使用指南</h2>
+            <!-- 4. Features -->
+            <section id="features" class="mb-12 scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">4</span> 
+                    <span class="zh-only">核心功能</span><span class="en-only">Core Features</span>
+                </h2>
 
                 <div class="space-y-8">
-                    <!-- 聊天 -->
+                    <!-- Chat -->
                     <div class="flex gap-4">
                         <div class="w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 text-xl">
                             <i class="fas fa-comments"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-800">流式对话</h3>
+                            <h3 class="text-lg font-bold text-gray-800">
+                                <span class="zh-only">流式对话 & 深度思考</span><span class="en-only">Stream Chat & Reasoning</span>
+                            </h3>
                             <p class="text-gray-600 text-sm mt-1">
-                                像使用 ChatGPT 一样。支持 Markdown 渲染、代码高亮。如果模型支持（如 DeepSeek R1），系统会自动折叠显示 <span class="inline-code">&lt;think&gt;</span> 深度思考过程。
+                                <span class="zh-only">支持 Markdown、代码高亮。自动识别 DeepSeek R1 等模型的 <span class="inline-code">&lt;think&gt;</span> 标签，并将其折叠显示，保持界面整洁。</span>
+                                <span class="en-only">Supports Markdown, Syntax Highlighting. Automatically detects and folds <span class="inline-code">&lt;think&gt;</span> tags from reasoning models like DeepSeek R1.</span>
                             </p>
                         </div>
                     </div>
 
-                    <!-- 多模态 -->
+                    <!-- System Prompt -->
                     <div class="flex gap-4">
-                        <div class="w-12 h-12 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0 text-xl">
-                            <i class="fas fa-photo-video"></i>
+                        <div class="w-12 h-12 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center flex-shrink-0 text-xl">
+                            <i class="fas fa-user-cog"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-800">多模态展示</h3>
+                            <h3 class="text-lg font-bold text-gray-800">
+                                <span class="zh-only">系统提示词 (Persona)</span><span class="en-only">System Prompts (Persona)</span>
+                            </h3>
                             <p class="text-gray-600 text-sm mt-1">
-                                <strong>图片：</strong> 如果使用了 Midjourney/Dall-E 模型，图片会直接显示。<br>
-                                <strong>视频：</strong> 使用 Luma/Runway 生成的视频会自动加载播放器。<br>
-                                <strong>音频：</strong> Suno 音乐会自动加载音频条。
+                                <span class="zh-only">点击输入框上方的按钮，设定 AI 的人设（如“翻译官”、“Python 专家”）。支持一键清空和预设切换。</span>
+                                <span class="en-only">Set the AI's persona (e.g., "Translator", "Python Expert") via the button above the input box.</span>
                             </p>
                         </div>
                     </div>
 
-                    <!-- 文档解析 -->
+                    <!-- RAG -->
                     <div class="flex gap-4">
                         <div class="w-12 h-12 rounded-lg bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0 text-xl">
-                            <i class="fas fa-file-alt"></i>
+                            <i class="fas fa-file-upload"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-800">文档上传 (RAG)</h3>
+                            <h3 class="text-lg font-bold text-gray-800">
+                                <span class="zh-only">文档解析 (RAG)</span><span class="en-only">Doc Parsing (RAG)</span>
+                            </h3>
                             <p class="text-gray-600 text-sm mt-1">
-                                点击输入框旁的 <i class="fas fa-paperclip text-gray-400"></i> 别针图标，上传 PDF、Word 或 TXT 文件。系统会自动解析文字内容并发给 AI，让 AI 基于文档回答问题。
+                                <span class="zh-only">上传 PDF/Word/TXT，系统会自动提取文本发送给 AI。AI 将基于文档内容回答您的问题。</span>
+                                <span class="en-only">Upload PDF/Word/TXT files. The system extracts text and sends it to the AI for context-aware answers.</span>
                             </p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- 5. 高级技巧 -->
-            <section id="advanced" class="mb-12 scroll-mt-24">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">5</span> 高级技巧</h2>
+            <!-- 5. Settings -->
+            <section id="settings" class="mb-12 scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">5</span> 
+                    <span class="zh-only">设置与优化</span><span class="en-only">Settings & Optimization</span>
+                </h2>
+
+                <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h3 class="font-bold text-gray-800 mb-3">
+                        <i class="fas fa-history text-purple-500 mr-2"></i>
+                        <span class="zh-only">上下文长度控制 (Context Length)</span><span class="en-only">Context Length Control</span>
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">
+                        <span class="zh-only">在设置中，通过滑块调整发送给 AI 的历史消息数量（默认为 20 条）。</span>
+                        <span class="en-only">Adjust the number of historical messages sent to the AI via the slider in Settings (Default: 20).</span>
+                    </p>
+                    <ul class="text-xs text-gray-500 space-y-2">
+                        <li>✅ <span class="zh-only"><strong>调小数值 (如 2):</strong> 节省 Token，适合单次问答。</span><span class="en-only"><strong>Low (e.g., 2):</strong> Saves tokens, good for single-turn Q&A.</span></li>
+                        <li>✅ <span class="zh-only"><strong>调大数值 (如 60):</strong> 增强记忆，适合长文写作或复杂任务。</span><span class="en-only"><strong>High (e.g., 60):</strong> Better memory, good for long contexts.</span></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 6. Paid Mode -->
+            <section id="paid" class="mb-12 scroll-mt-24">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">6</span> 
+                    <span class="zh-only">运营与付费模式</span><span class="en-only">Paid Mode & Admin</span>
+                </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="p-4 border rounded-lg hover:shadow-md transition">
-                        <div class="text-2xl mb-2">🌑</div>
-                        <h4 class="font-bold mb-1">暗黑模式</h4>
-                        <p class="text-xs text-gray-500">在设置中可以手动切换深色/浅色主题，或让其跟随系统。</p>
+                <p class="text-gray-600 text-sm mb-4">
+                    <span class="zh-only">本系统内置了简单的点数扣费系统，适合小型团队或个人运营使用。</span>
+                    <span class="en-only">Built-in points deduction system, suitable for small teams or personal operation.</span>
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 border rounded-lg">
+                        <h4 class="font-bold text-sm mb-2">
+                            <span class="zh-only">1. 开启付费模式</span><span class="en-only">1. Enable Paid Mode</span>
+                        </h4>
+                        <code class="text-xs bg-gray-800 text-white px-2 py-1 rounded block mb-2">set PAID_MODE=true</code>
+                        <p class="text-xs text-gray-500">
+                            <span class="zh-only">设置环境变量后，顶部会出现点数余额，对话时自动扣费。</span>
+                            <span class="en-only">Set env var. Points balance appears, and chat deducts points.</span>
+                        </p>
                     </div>
-                    <div class="p-4 border rounded-lg hover:shadow-md transition">
-                        <div class="text-2xl mb-2">🤖</div>
-                        <h4 class="font-bold mb-1">自定义模型</h4>
-                        <p class="text-xs text-gray-500">如果在下拉列表中找不到你的模型，可以在设置中点击“手动填写”直接输入模型 ID。</p>
-                    </div>
-                    <div class="p-4 border rounded-lg hover:shadow-md transition">
-                        <div class="text-2xl mb-2">📋</div>
-                        <h4 class="font-bold mb-1">模型概览</h4>
-                        <p class="text-xs text-gray-500">在设置中点击“概览”，可以查看按厂商分类的所有可用模型图标墙。</p>
+                    <div class="p-4 border rounded-lg">
+                        <h4 class="font-bold text-sm mb-2">
+                            <span class="zh-only">2. 自定义价格</span><span class="en-only">2. Custom Pricing</span>
+                        </h4>
+                        <p class="text-xs text-gray-500 mb-2">
+                            <span class="zh-only">修改根目录下的 <span class="inline-code">price.json</span> 文件。</span>
+                            <span class="en-only">Edit <span class="inline-code">price.json</span> in root directory.</span>
+                        </p>
+                        <pre class="text-[10px]">
+"providers": { "openai": 200 },
+"overrides": { "gpt-4": 500 }</pre>
                     </div>
                 </div>
             </section>
 
-            <!-- 6. FAQ -->
+            <!-- 7. FAQ -->
             <section id="faq" class="scroll-mt-24">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center"><span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">6</span> 常见问题</h2>
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                    <span class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm mr-3">7</span> 
+                    <span class="zh-only">常见问题</span><span class="en-only">FAQ</span>
+                </h2>
                 
                 <div class="space-y-4">
                     <details class="group border rounded-lg bg-gray-50 open:bg-white open:ring-1 open:ring-blue-200 transition">
                         <summary class="flex items-center justify-between p-4 cursor-pointer font-medium text-gray-800">
-                            <span>Q: 为什么点击“测试连接”提示 404？</span>
+                            <span>
+                                <span class="zh-only">Q: 为什么每次重启都要重新登录？</span>
+                                <span class="en-only">Q: Why do I have to relogin after restart?</span>
+                            </span>
                             <span class="transition group-open:rotate-180"><i class="fas fa-chevron-down text-gray-400"></i></span>
                         </summary>
                         <div class="px-4 pb-4 text-sm text-gray-600">
-                            通常是因为 Endpoint 地址写错了。请确保地址结尾没有多余的斜杠，且路径正确（例如 <code class="bg-gray-100 px-1 rounded">/v1</code>）。
+                            <span class="zh-only">这通常发生在生产环境。系统现在会在根目录自动生成一个 <span class="inline-code">key</span> 文件来固定 Secret Key。请确保该文件未被删除。</span>
+                            <span class="en-only">The system now auto-generates a <span class="inline-code">key</span> file in root to fix the Secret Key. Ensure this file is not deleted.</span>
                         </div>
                     </details>
 
                     <details class="group border rounded-lg bg-gray-50 open:bg-white open:ring-1 open:ring-blue-200 transition">
                         <summary class="flex items-center justify-between p-4 cursor-pointer font-medium text-gray-800">
-                            <span>Q: 如何在局域网内让手机访问？</span>
+                            <span>
+                                <span class="zh-only">Q: 报错 400 Context Length Exceeded?</span>
+                                <span class="en-only">Q: Error 400 Context Length Exceeded?</span>
+                            </span>
                             <span class="transition group-open:rotate-180"><i class="fas fa-chevron-down text-gray-400"></i></span>
                         </summary>
                         <div class="px-4 pb-4 text-sm text-gray-600">
-                            修改 <code class="inline-code">app.py</code> 最后一行，将 <code class="inline-code">app.run(port=5000)</code> 改为 <code class="inline-code">app.run(host='0.0.0.0', port=5000)</code>。然后确保电脑防火墙允许 5000 端口，手机访问电脑 IP:5000 即可。
+                            <span class="zh-only">这是因为对话历史太长了。请进入设置，减小“上下文长度控制”的数值（建议 20 左右），或者开启新对话。</span>
+                            <span class="en-only">Conversation history is too long. Go to Settings, reduce "Context Length" (recommend ~20), or start a new chat.</span>
                         </div>
                     </details>
                 </div>
@@ -226,12 +338,30 @@
         </main>
     </div>
 
-    <!-- 页脚 -->
+    <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 mt-12 py-8">
         <div class="container mx-auto px-4 text-center">
             <p class="text-gray-500 text-sm">© 2025 AI Hub Pro. Open Source under MIT License.</p>
         </div>
     </footer>
+
+    <script>
+        // Simple Language Toggle Logic
+        function setLanguage(lang) {
+            document.body.classList.remove('lang-zh', 'lang-en');
+            document.body.classList.add('lang-' + lang);
+            localStorage.setItem('docs_lang', lang);
+        }
+
+        function toggleLanguage() {
+            const current = document.body.classList.contains('lang-zh') ? 'zh' : 'en';
+            setLanguage(current === 'zh' ? 'en' : 'zh');
+        }
+
+        // Init
+        const savedLang = localStorage.getItem('docs_lang') || 'zh';
+        setLanguage(savedLang);
+    </script>
 
 </body>
 </html>

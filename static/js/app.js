@@ -1,4 +1,28 @@
 // static/js/app.js
+window.copyCodeBlock = async (btn) => {
+    const wrapper = btn.closest('.code-block-wrapper');
+    const codeBlock = wrapper.querySelector('code');
+    if (!codeBlock) return;
+
+    const text = codeBlock.innerText;
+
+    // === 直接调用公共工具 ===
+    const success = await AppClipboard.copy(text);
+
+    if (success) {
+        // UI 反馈逻辑保持不变
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        btn.classList.add('text-green-500');
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('text-green-500');
+        }, 2000);
+    } else {
+        const lang = localStorage.getItem('app_lang') || 'zh';
+        AppUI.toast(window.MESSAGES[lang]['copy_fail_alert'] || 'Copy failed', 'error');
+    }
+};
 
 const { createApp } = Vue;
 
@@ -22,6 +46,8 @@ createApp({
             showAbout: false, // [新增] 控制关于弹窗显示
             isUserAtBottom: true,
             showAdvancedApi: false,
+            showSystemPromptModal: false,
+            lang: localStorage.getItem('app_lang') || 'zh',
 
             // --- 数据 ---
             authForm: { username: '', password: '' },
@@ -36,7 +62,8 @@ createApp({
                 dark_mode: false,
                 // [新增] 自定义 API 字段
                 custom_request_template: '',
-                custom_response_path: ''
+                custom_response_path: '',
+                context_length: 20
             },
 
             useCustomModel: false, // [新增]
@@ -49,20 +76,21 @@ createApp({
             currentSessionId: null,
             messages: [],
 
+            // 【新增】付费模式相关
+            paidMode: false,
+            userPoints: 0,
+            showTopUpModal: false, // 控制充值弹窗
+            topUpOptions: [
+                { points: 1000, price: '¥ 9.9', labelKey: 'pack_fresh' },
+                { points: 5000, price: '¥ 39.9', labelKey: 'pack_value' },
+                { points: 20000, price: '¥ 99.0', labelKey: 'pack_luxury' }
+            ],
+
             // --- 输入区域 ---
             inputMessage: '',
             attachedFiles: [],
             // 【新增】提示词库数组
-            promptLibrary: [
-                { icon: '⚛️', title: '量子纠缠', content: '请用通俗易懂的语言解释量子纠缠，并举一个生活中的例子说明，最好能用“双胞胎”来比喻。' },
-                { icon: '🐍', title: 'Python 爬虫', content: '写一个 Python 爬虫脚本，使用 requests 和 BeautifulSoup 库，抓取一个网页的标题和所有链接，并处理异常情况。' },
-                { icon: '📝', title: '周报生成', content: '我本周完成了：1. 修复登录 API 的 Bug；2. 优化数据库查询速度；3. 协助测试团队回归测试。请帮我扩写成一份正式的周报。' },
-                { icon: '🎨', title: 'SVG 图标', content: '请生成一个扁平化风格的“火箭发射”图标的 SVG 代码，颜色使用橙色和深蓝色。' },
-                { icon: '⚖️', title: '法律咨询', content: '如果你是一名资深律师，请分析一下：邻居装修噪音在周末早上8点开始施工，是否违反了中国相关法律法规？我该如何维权？' },
-                { icon: '🍳', title: '食谱推荐', content: '我冰箱里有鸡蛋、西红柿、土豆和牛肉。请推荐两道家常菜，并给出详细的做法步骤。' },
-                { icon: '📊', title: 'SQL 优化', content: '我有一个包含 500 万条数据的订单表，查询速度很慢。请给出几个常见的 SQL 查询优化建议和索引策略。' },
-                { icon: '🧠', title: '头脑风暴', content: '请为一款针对大学生的“时间管理 APP”想 5 个富有创意的名字，并简述每个名字的设计理念。' }
-            ],
+            promptLibrary: [],
             randomPrompts: [], // 【新增】用于当前显示的随机数据
         }
     },
@@ -75,6 +103,7 @@ createApp({
         window.addEventListener('paste', this.handlePaste);
 
         // 初始化
+        this.updatePromptLibrary(); // 初始化加载提示词库
         this.refreshRandomPrompts();
         this.checkLoginStatus();
         this.loadCachedModels();
@@ -87,6 +116,13 @@ createApp({
         currentSessionTitle() {
             const s = this.sessions.find(x => x.id === this.currentSessionId);
             return s ? s.title : '新对话';
+        },
+        totalSessionTokens() {
+            if (!this.messages || this.messages.length === 0) return 0;
+            return this.messages.reduce((acc, msg) => {
+                // 累加每一条消息的 token (包括 user 和 assistant)
+                return acc + this.estimateTokens(msg.content);
+            }, 0);
         },
         // [核心修复]：分组模型逻辑
         groupedModels() {
@@ -128,6 +164,24 @@ createApp({
     },
 
     methods: {
+        updatePromptLibrary() {
+            this.promptLibrary = window.PROMPTS[this.lang] || window.PROMPTS['zh'];
+        },
+        // 【新增】Token 估算算法
+        estimateTokens(text) {
+            if (!text) return 0;
+            // 1. 统计中文字符 (CJK)
+            // 中文通常占 1.5 ~ 2 个 Token，这里取 1.6 做估算
+            const cjkMatch = text.match(/[\u4e00-\u9fa5]/g);
+            const cjkCount = cjkMatch ? cjkMatch.length : 0;
+
+            // 2. 统计非中文字符 (英文、数字、符号)
+            // 英文通常 4 个字符 = 1 Token，即 0.25
+            const otherCount = text.length - cjkCount;
+
+            // 3. 计算总和 (向上取整)
+            return Math.ceil(cjkCount * 1.6 + otherCount * 0.25);
+        },
         // ===========================
         // 1. 认证与设置模块
         // ===========================
@@ -138,15 +192,46 @@ createApp({
                     this.isLoggedIn = true;
                     this.applySettings(settings);
                     if (this.authForm.username) await this.loadSessions();
+
+                    // 获取付费状态和余额
+                    this.fetchUserStatus();
                 }
             } catch (e) {
                 console.log("Not logged in");
             }
         },
 
+        // 【新增】获取用户状态
+        async fetchUserStatus() {
+            try {
+                const res = await AppAPI.request('/api/user_status');
+                this.paidMode = res.paid_mode;
+                this.userPoints = res.points;
+            } catch (e) { console.error(e); }
+        },
+
+        // 【新增】模拟充值
+        async handleTopUp(amount) {
+            const title = this.t('confirm_pay');
+            const content = this.formatString(this.t('confirm_pay_text'), amount);
+            const confirmed = await AppUI.confirm(title, content);
+            if (!confirmed) return;
+
+            try {
+                const res = await AppAPI.request('/api/add_points', 'POST', { amount });
+                if (res.success) {
+                    this.userPoints = res.new_balance;
+                    AppUI.toast(this.formatString(this.t('pay_success'), res.new_balance), 'success');
+                    this.showTopUpModal = false;
+                }
+            } catch (e) {
+                AppUI.toast(this.t('pay_fail'), 'error');
+            }
+        },
+
         async handleAuth() {
             if (!this.authForm.username || !this.authForm.password) {
-                this.authError = "请输入完整信息"; return;
+                this.authError = this.t('input_missing'); return;
             }
             try {
                 const res = this.isRegistering
@@ -157,7 +242,7 @@ createApp({
                     if (this.isRegistering) {
                         this.isRegistering = false;
                         this.authForm.password = '';
-                        alert('注册成功，请登录');
+                        AppUI.toast(this.t('reg_success_login'), 'success');
                     } else {
                         this.isLoggedIn = true;
                         this.authError = '';
@@ -167,7 +252,7 @@ createApp({
                     this.authError = res.message;
                 }
             } catch (e) {
-                this.authError = "网络请求失败";
+                this.authError = this.t('network_err');
             }
         },
 
@@ -190,20 +275,21 @@ createApp({
 
         // [新增] 1. 复制消息
         async copyMessage(text) {
-            try {
-                await navigator.clipboard.writeText(text);
-                // 这里可以做一个简易的 Toast 提示，或者简单弹个窗，或者利用按钮变色
-                // 为了简单起见，我们暂时只在控制台输出，或者你可以 alert('已复制')
-                console.log('Copied');
-            } catch (err) {
-                console.error('复制失败:', err);
-                alert('复制失败，请手动复制');
+            // === 直接调用公共工具 ===
+            const success = await AppClipboard.copy(text);
+
+            if (success) {
+                AppUI.toast(this.t('copy_success'), 'success');
+            } else {
+                AppUI.toast(this.t('copy_fail_browser'), 'error');
             }
         },
 
         // [新增] 2. 删除单条消息
         async deleteMessage(index) {
-            if (!confirm('确定删除这条消息吗？')) return;
+            // 使用自定义 Confirm
+            const confirmed = await AppUI.confirm(this.t('delete_confirm_title'), this.t('del_msg_confirm'));
+            if (!confirmed) return;
 
             this.messages.splice(index, 1);
             await this.saveCurrentSessionData();
@@ -212,13 +298,19 @@ createApp({
         // [新增] 3. 编辑消息
         async editMessage(index) {
             const msg = this.messages[index];
-            // 如果内容太长，prompt 体验不好，但对于简单编辑足够了
-            // 进阶做法是把气泡变成 textarea，这里先用 prompt 实现
-            const newContent = prompt("编辑消息内容：", msg.content);
 
-            if (newContent !== null && newContent.trim() !== "") {
+            // 使用自定义 Input 弹窗
+            const newContent = await AppUI.input(
+                this.t('edit_msg_title'),
+                msg.content,
+                this.t('edit_msg_ph')
+            );
+
+            // 如果用户点击确定且内容不为空 (AppUI.input 返回 null 代表取消)
+            if (newContent !== null) {
                 msg.content = newContent;
                 await this.saveCurrentSessionData();
+                AppUI.toast(this.t('msg_edited'), 'success');
             }
         },
 
@@ -263,29 +355,33 @@ createApp({
             const session = this.sessions.find(s => s.id === id);
             if (!session) return;
 
-            // 2. 弹出输入框
-            const newTitle = prompt("重命名对话：", session.title);
+            // 2. 弹出自定义输入框
+            const newTitle = await AppUI.input(
+                this.t('rename_title'),
+                session.title,
+                this.t('rename_ph')
+            );
 
-            // 3. 如果用户输入了内容并且不是空的
-            if (newTitle !== null && newTitle.trim() !== "") {
-                session.title = newTitle.trim();
-
+            // 3. 如果用户输入了内容
+            if (newTitle !== null) {
+                session.title = newTitle;
                 // 保存到 IndexedDB
                 await AppDB.saveSession(session);
+                AppUI.toast(this.t('rename_success'), 'success');
             }
         },
 
         // [新增] 处理测试连接
         async handleTestConnection() {
             if (!this.settings.api_endpoint) {
-                alert("请先输入 API Endpoint");
+                AppUI.toast(this.t('config_missing'), 'error')
                 return;
             }
 
             // 允许 Key 为空（如果是为了测试已保存的 Key）
             // 但如果两个都为空肯定不行
             if (!this.settings.api_endpoint) {
-                alert("请输入配置信息"); return;
+                AppUI.toast("请输入配置信息", 'error'); return;
             }
 
             this.isTestingConnection = true;
@@ -297,20 +393,40 @@ createApp({
                 );
 
                 if (res.success) {
-                    alert("✅ " + res.message);
+                    AppUI.toast(res.message, 'success');
                     // 如果测试成功，自动刷新一下模型列表，方便用户选择
                     this.fetchModels();
                 } else {
-                    alert("❌ " + res.message);
+                    AppUI.toast(res.message, 'error');
                 }
             } catch (e) {
-                alert("❌ 请求发送失败，请检查网络连接");
+                AppUI.toast(this.t('request_fail'), 'error');
                 console.error(e);
             } finally {
                 this.isTestingConnection = false;
             }
         },
+        async saveSystemPrompt() {
+            try {
+                // 保存设置
+                await AppAPI.saveSettings(this.settings);
+                this.showSystemPromptModal = false;
+                AppUI.toast(this.t('save_success'), 'success');
 
+                // 如果当前已经在对话中，可选：发送一条系统消息提示用户
+                if (this.messages.length > 0) {
+                    this.messages.push({
+                        role: 'assistant',
+                        content: this.formatString(this.t('sys_prompt_sent'), (this.settings.system_prompt || this.t('default_assistant'))),
+                        model: 'System'
+                    });
+                    this.smartScrollToBottom();
+                }
+            } catch (e) {
+                AppUI.toast(this.t('save_error'), 'error');
+                console.error(e);
+            }
+        },
         async saveSettings() {
             this.settings.dark_mode = this.isDarkMode;
             await AppAPI.saveSettings(this.settings);
@@ -360,16 +476,46 @@ createApp({
             if (window.innerWidth < 768) this.showSidebar = false;
         },
 
+        // 【新增】切换语言方法
+        toggleLang() {
+            this.lang = this.lang === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('app_lang', this.lang);
+            this.updatePromptLibrary(); // 更新库
+            this.refreshRandomPrompts(); // 刷新显示
+            AppUI.toast(this.t('switched_lang'), 'success');
+        },
+
+        formatString(str, ...args) {
+            return str.replace(/{(\d+)}/g, (match, number) => {
+                return typeof args[number] != 'undefined' ? args[number] : match;
+            });
+        },
+
+        // 【新增】核心翻译函数
+        t(key) {
+            // 从全局变量 MESSAGES 中获取
+            // 如果找不到 key，就直接显示 key，方便调试
+            return MESSAGES[this.lang][key] || key;
+        },
+
         startNewChat() {
             this.currentSessionId = null;
             this.messages = [];
             this.inputMessage = '';
             this.attachedFiles = [];
+
+            // 【新增】强制重置状态，防止之前的对话卡住
+            this.isThinking = false;
+            this.isStreaming = false;
+
             if (window.innerWidth < 768) this.showSidebar = false;
         },
 
         async deleteSession(id) {
-            if (!confirm('确定删除?')) return;
+            const isConfirmed = await AppUI.confirm(this.t('del_session_title'), this.t('del_session_desc'));
+            if (!isConfirmed) return;
+            await AppDB.deleteSession(id);
+            AppUI.toast('删除成功', 'success');
             await AppDB.deleteSession(id);
             this.sessions = this.sessions.filter(s => s.id !== id);
             if (this.currentSessionId === id) this.startNewChat();
@@ -401,35 +547,64 @@ createApp({
 
         // 3. 切换深度思考 (Deep Thinking)
         toggleDeepThinking() {
-            const current = this.settings.model;
-            const keywords = ['reason', 'think', 'o1-', 'r1'];
+            const currentModel = this.settings.model;
+            const currentProvider = IconLibrary.identifyProvider(currentModel); // 获取当前厂商 (如 claude, openai)
+
+            // 定义思考模型的关键词
+            const thinkingKeywords = ['reason', 'think', 'o1-', 'r1', 'k1'];
 
             if (this.isDeepThinkingEnabled) {
-                // 如果当前是思考模型，切换回标准模型
-                if (this.previousStandardModel && this.modelList.includes(this.previousStandardModel)) {
+                // === 场景 A: 当前已经是思考模型，想切回普通版 ===
+
+                // 1. 如果有历史记录且厂商一致，切回去
+                if (this.previousStandardModel &&
+                    this.modelList.includes(this.previousStandardModel) &&
+                    IconLibrary.identifyProvider(this.previousStandardModel) === currentProvider
+                ) {
                     this.settings.model = this.previousStandardModel;
                 } else {
-                    const fallback = this.modelList.find(m => !keywords.some(k => m.toLowerCase().includes(k)));
-                    this.settings.model = fallback || 'gpt-3.5-turbo';
+                    // 2. 否则，在同厂商里找一个非思考模型
+                    const standardFallback = this.modelList.find(m => {
+                        const p = IconLibrary.identifyProvider(m);
+                        const isThinking = thinkingKeywords.some(k => m.toLowerCase().includes(k));
+                        return p === currentProvider && !isThinking;
+                    });
+                    // 3. 如果同厂商没找到，就回退到 GPT-4o 或列表第一个
+                    this.settings.model = standardFallback || 'gpt-4o';
                 }
             } else {
-                // 如果当前是标准模型，切换去思考模型
-                this.previousStandardModel = current;
-                const thinkingModel = this.modelList.find(m =>
-                    keywords.some(k => m.toLowerCase().includes(k))
-                );
+                // === 场景 B: 当前是普通模型，想开启深度思考 ===
+                this.previousStandardModel = currentModel;
 
-                if (thinkingModel) {
-                    this.settings.model = thinkingModel;
+                // 1. 在【同厂商】中寻找思考模型 (例如 claude -> claude-3-7-sonnet)
+                // 逻辑：必须是同厂商 + 包含思考关键词
+                let targetModel = this.modelList.find(m => {
+                    const p = IconLibrary.identifyProvider(m);
+                    const isThinking = thinkingKeywords.some(k => m.toLowerCase().includes(k));
+                    return p === currentProvider && isThinking;
+                });
+
+                // 2. 如果同厂商没有思考模型 (比如用 gemini 但列表里只有 o1)，则尝试找任意思考模型
+                if (!targetModel) {
+                    targetModel = this.modelList.find(m =>
+                        thinkingKeywords.some(k => m.toLowerCase().includes(k))
+                    );
+                }
+
+                if (targetModel) {
+                    this.settings.model = targetModel;
+                    AppUI.toast(`已开启深度思考模式 (${targetModel})`, 'success');
                 } else {
-                    alert("列表里没找到思考模型 (如 reasoner, o1)。请先在设置中刷新。");
+                    AppUI.toast("当前模型列表里未找到支持深度思考的模型 (如 o1, r1, thinking)", 'error');
                 }
             }
             this.saveSettings();
         },
 
-        resetApiSettings() {
-            if (!confirm("确定要清空自定义配置并恢复默认吗？")) return;
+        async resetApiSettings() {
+            // 使用自定义 Confirm
+            const confirmed = await AppUI.confirm(this.t('api_reset_confirm'));
+            if (!confirmed) return;
             this.settings.custom_request_template = ''; // 空代表使用后端默认
             this.settings.custom_response_path = '';    // 空代表使用后端默认
         },
@@ -441,36 +616,69 @@ createApp({
         // [新增] 核心：处理 API 请求与流式响应
         async streamResponse() {
             if (this.isThinking) return;
+
+            // ================= [新增] 发送前余额检查 =================
+            if (this.paidMode && this.userPoints <= 0) {
+                AppUI.toast("点数不足，请先充值！", 'error');
+                this.showTopUpModal = true;
+                return;
+            }
+            // ======================================================
+
             this.isThinking = true;
             this.isStreaming = false; // 准备开始流传输
 
             // 1. 构建 API 消息格式 (OpenAI 兼容)
-            // 这里复用了之前修复过的“带图片”的逻辑
-            const apiMessages = this.messages.map((msg, index) => {
-                // 判断逻辑：如果是最后一条用户消息，且包含文件，则组装多模态格式
-                // 注意：在重新生成时，最后一条通常是 User 消息
-                const isLastUserMsg = (msg.role === 'user' && index === this.messages.length - 1);
+            let maxHistory = this.settings.context_length;
+            if (maxHistory === undefined || maxHistory === null) maxHistory = 20;
+
+            // 1. 获取需要发送的消息切片
+            // 如果 maxHistory 为 0，slice(-0) 会返回空数组，符合"单轮对话"逻辑(只发当前这一条)
+            // 但我们需要保留当前的最后一条用户消息，所以逻辑稍微调整：
+
+            let messagesToSend = [];
+
+            if (maxHistory > 0) {
+                // 正常截取历史
+                messagesToSend = this.messages.slice(-maxHistory);
+            } else {
+                // 如果设置为 0，只发送最后一条 (即本次用户的提问)
+                messagesToSend = this.messages.slice(-1);
+            }
+
+            // 2. 构建 API 消息格式 (基于切片后的数据 map)
+            const apiMessages = messagesToSend.map((msg, index) => {
+                // 判断逻辑：如果是切片后的最后一条，且是用户消息...
+                const isLastUserMsg = (msg.role === 'user' && index === messagesToSend.length - 1);
                 const hasFiles = msg.files && msg.files.length > 0;
 
+                // 构建发送给 AI 的实际文本 (文本 + 隐藏的文档内容)
+                let contentToSend = msg.content;
+                if (msg.role === 'user' && msg.parsed_context) {
+                    contentToSend += "\n" + msg.parsed_context;
+                }
+
+                // 处理多模态 (图片)
                 if (isLastUserMsg && hasFiles) {
                     const contentParts = [];
-                    if (msg.content) contentParts.push({ type: "text", text: msg.content });
+                    if (contentToSend) contentParts.push({ type: "text", text: contentToSend });
 
                     msg.files.forEach(f => {
                         if (f.type === 'image') {
+                            // 图片转 Base64 逻辑
                             contentParts.push({ type: "image_url", image_url: { url: f.content, detail: "auto" } });
                         }
                     });
 
-                    // 只有文本
+                    // 格式修正：如果只有纯文本，不要包在数组里 (兼容性更好)
                     if (contentParts.length === 1 && contentParts[0].type === 'text') {
-                        return { role: msg.role, content: msg.content };
+                        return { role: msg.role, content: contentParts[0].text };
                     }
                     return { role: msg.role, content: contentParts };
                 }
 
                 // 历史消息只传文本
-                return { role: msg.role, content: msg.content };
+                return { role: msg.role, content: contentToSend };
             });
 
             // 2. 准备接收回复
@@ -494,6 +702,13 @@ createApp({
                     this.isThinking = false;
                     this.isStreaming = false;
 
+                    // ================= [新增] 刷新余额 =================
+                    // 对话成功结束后，向后端拉取最新的余额（因为后端已经扣费）
+                    if (this.paidMode) {
+                        this.fetchUserStatus();
+                    }
+                    // =================================================
+
                     // 保存会话
                     if (this.currentSessionId) {
                         const session = this.sessions.find(s => s.id === this.currentSessionId);
@@ -501,16 +716,29 @@ createApp({
                             session.messages = this.messages;
                             await AppDB.saveSession(session);
                         }
-                    } else if (this.messages.length > 0) {
-                        // 极少情况：如果还没创建会话对象（通常 sendMessage 会创建）
-                        // 这里可以补救，暂略
                     }
                     this.smartScrollToBottom();
                 },
-                onError: (err) => {
+                // ================= 【修复点 2】 =================
+                onError: async (err) => { // 注意：加上 async
                     this.isThinking = false;
                     this.isStreaming = false;
-                    this.messages.push({ role: 'assistant', content: `Error: ${err}`, model: 'System' });
+
+                    // 错误处理逻辑 (402 等)
+                    if (err.includes("402") || err.includes("点数不足")) {
+                        this.messages.push({
+                            role: 'assistant',
+                            content: `**${this.t('bal_warning_title')}**\n\n${this.formatString(this.t('bal_warning_content'), err)}`,
+                            model: 'System'
+                        });
+                        this.showTopUpModal = true;
+                    } else {
+                        this.messages.push({ role: 'assistant', content: `Error: ${err}`, model: 'System' });
+                    }
+
+                    // 重点：出错后也要保存会话！这样刷新后能在历史记录看到报错信息
+                    await this.saveCurrentSessionData();
+
                     this.smartScrollToBottom();
                 }
             });
@@ -536,18 +764,25 @@ createApp({
             // 2. [文档解析]
             // 如果有文档，先解析并将文本附加到 prompt 中
             // 注意：为了让“重新生成”也能带上文档内容，我们直接把解析后的文本拼接到消息里
+            // 2. [文档解析]
+            // 如果有文档，先解析并将文本附加到 prompt 中
             let finalPrompt = textContent;
+
+            // 【新增变量】专门用来存解析后的长文本
+            let fullDocText = "";
+
             const docFiles = currentFiles.filter(f => f.type === 'doc');
 
             if (docFiles.length > 0) {
                 // 临时显示提示
-                const loadingMsgIndex = this.messages.push({ role: 'assistant', content: '正在解析文档...', model: 'System' }) - 1;
+                const loadingMsgIndex = this.messages.push({ role: 'assistant', content: this.t('parsing_doc'), model: 'System' }) - 1;
                 this.smartScrollToBottom();
 
                 for (let fileObj of docFiles) {
                     const extractedText = await AppAPI.parseDocument(fileObj.raw);
                     if (extractedText) {
-                        finalPrompt += `\n\n--- Document: ${fileObj.name} ---\n${extractedText}\n----------------\n`;
+                        // 【修改点】不再拼接到 finalPrompt，而是拼接到 fullDocText
+                        fullDocText += `\n\n--- Document: ${fileObj.name} ---\n${extractedText}\n----------------\n`;
                     }
                 }
                 // 移除临时提示
@@ -557,12 +792,19 @@ createApp({
             // 3. 推送用户消息上屏
             const userMsg = {
                 role: 'user',
-                content: finalPrompt, // 这里包含了文档内容，确保重试时有效
+                content: finalPrompt, // 这里只放用户输入的话 (例如："阅读这篇文献...")
+
+                // 【新增字段】这里存放不显示的文档全文，Saved in DB automatically
+                parsed_context: fullDocText,
+
                 files: currentFiles,
                 model: this.settings.model
             };
             this.messages.push(userMsg);
             this.smartScrollToBottom(true);
+
+            // 用户发完消息立刻保存
+            await this.saveCurrentSessionData();
 
             // 4. 调用核心流式请求
             await this.streamResponse();
@@ -571,21 +813,27 @@ createApp({
         // ===========================
         // 4. 辅助功能 (渲染、滚动、文件)
         // ===========================
+        // [修改] static/js/app.js 中的 renderContent 函数
         renderContent(text) {
             if (!text) return '';
 
             let processed = text;
 
-            // 1. 思维链 (DeepSeek/Claude Thinking)
+            // === 修复深度思考渲染 ===
+
+            // 1. 处理【完整】的思考块 <think>...</think>
+            // 使用非贪婪匹配，处理中间的内容
             processed = processed.replace(
                 /<think>([\s\S]*?)<\/think>/g,
-                '<details class="think-block" open><summary>深度思考过程</summary><div class="content">$1</div></details>'
+                '<details class="think-block"><summary>深度思考过程</summary><div class="content">$1</div></details>'
             );
-            // 处理未闭合的 thinking
+
+            // 2. 处理【未闭合】的思考块 (流式输出中，正在思考时)
+            // 只要有 <think> 但后面没有 </think>，就视为正在生成
             if (processed.includes('<think>') && !processed.includes('</think>')) {
                 processed = processed.replace(
-                    /<think>([\s\S]*)/g,
-                    '<details class="think-block" open><summary>思考中...</summary><div class="content">$1</div></details>'
+                    /<think>([\s\S]*)/, // 匹配从 <think> 开始到结尾的所有内容
+                    '<details class="think-block" open><summary><i class="fas fa-spinner fa-spin mr-1"></i> 思考中...</summary><div class="content animate-pulse">$1</div></details>'
                 );
             }
 
@@ -614,21 +862,36 @@ createApp({
 
             // 5. 链接优化 (让普通链接在新窗口打开)
             const renderer = new marked.Renderer();
-            const linkRenderer = renderer.link;
-            renderer.link = (href, title, text) => {
-                const html = linkRenderer.call(renderer, href, title, text);
-                return html.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
+            renderer.code = (code, language) => {
+                // 处理高亮
+                const validLang = !!(language && hljs.getLanguage(language));
+                const highlighted = validLang
+                    ? hljs.highlight(code, { language }).value
+                    : hljs.highlightAuto(code).value;
+
+                // 语言名称 (用于显示)
+                const langLabel = language ? language : 'Text';
+
+                // 返回包裹了 Wrapper 和 Button 的 HTML
+                return `
+                <div class="code-block-wrapper">
+                    <span class="code-lang-label">${langLabel}</span>
+                    <button class="copy-code-btn" onclick="window.copyCodeBlock(this)">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <pre><code class="hljs ${language || ''}">${highlighted}</code></pre>
+                </div>
+                `;
             };
 
-            // Markdown 解析
+            // 2. 链接在新窗口打开
+            renderer.link = (href, title, text) => {
+                return `<a target="_blank" rel="noopener noreferrer" href="${href}" title="${title || ''}">${text}</a>`;
+            };
+
+            // 3. 解析 Markdown
             let html = marked.parse(processed, { renderer: renderer });
 
-            // 代码高亮
-            this.$nextTick(() => {
-                if (typeof hljs !== 'undefined') {
-                    document.querySelectorAll('pre code').forEach((el) => hljs.highlightElement(el));
-                }
-            });
             return html;
         },
 
@@ -666,36 +929,48 @@ createApp({
         },
 
         processFiles(files) {
+            if (!files || files.length === 0) return; // 增加判空
+
             for (let file of files) {
-                // 1. 简单的文件大小限制 (例如 20MB)，防止浏览器崩溃
+                // 1. 简单的文件大小限制 (20MB)
                 if (file.size > 20 * 1024 * 1024) {
-                    alert(`文件 ${file.name} 太大，请上传 20MB 以内的文件`);
+                    AppUI.toast(`文件 ${file.name} 太大，请上传 20MB 以内的文件`, 'error');
                     continue;
                 }
 
-                // 2. 识别类型
+                // === 修复开始：增强类型识别逻辑 ===
                 let type = 'doc';
-                if (file.type.startsWith('image/')) type = 'image';
-                else if (file.type.startsWith('audio/')) type = 'audio'; // 新增
-                else if (file.type.startsWith('video/')) type = 'video'; // 新增
+                // 获取小写后缀名，例如 'png'
+                const ext = file.name.split('.').pop().toLowerCase();
 
-                // 3. 多媒体文件 (图片/音频/视频) 都读取为 Base64 以便预览
+                // 优先检查 MIME type，如果没有则检查后缀名
+                if (file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+                    type = 'image';
+                } else if (file.type.startsWith('audio/') || ['mp3', 'wav', 'm4a', 'ogg'].includes(ext)) {
+                    type = 'audio';
+                } else if (file.type.startsWith('video/') || ['mp4', 'webm', 'mov', 'avi'].includes(ext)) {
+                    type = 'video';
+                }
+                // === 修复结束 ===
+
+                // 3. 多媒体文件 (图片/音频/视频) 读取为 Base64
                 if (['image', 'audio', 'video'].includes(type)) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
+                        // 使用 this.attachedFiles.push 确保 Vue 能监听到变化
                         this.attachedFiles.push({
                             name: file.name,
                             type: type,
-                            content: e.target.result, // Base64 数据
+                            content: e.target.result, // Base64
                             raw: file
                         });
                     };
                     reader.readAsDataURL(file);
                 } else {
-                    // 普通文档 (PDF/Docx/Txt) 不需要立即读取内容
+                    // 普通文档
                     this.attachedFiles.push({
                         name: file.name,
-                        type: 'doc',
+                        type: 'doc', // 确保这里是 'doc'
                         content: null,
                         raw: file
                     });
