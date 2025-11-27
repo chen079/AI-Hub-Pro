@@ -80,7 +80,7 @@ python app.py
 ```
 Open your browser and visit: `http://127.0.0.1:5000`
 
-#### "run.bat"
+#### PLUS: "run.bat"
 we create a script, you can start "run.bat" to use the app directly.
 
 ### 📖 Usage Guide
@@ -162,7 +162,7 @@ python app.py
 ```
 访问浏览器：`http://127.0.0.1:5000`
 
-#### plus: run.bat
+#### PLUS: run.bat
 我们创建了运行脚本 run.bat，只需要双击即可引导你部署该应用。
 
 ### 📖 使用指南
