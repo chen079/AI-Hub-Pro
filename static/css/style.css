@@ -7,6 +7,11 @@
     line-height: 1.7;
 }
 
+/* 去除最后一段文字的底部边距，防止气泡底部留白过多 */
+.markdown-body p:last-child {
+    margin-bottom: 0;
+}
+
 .markdown-body pre {
     background: #f3f4f6;
     padding: 12px;
