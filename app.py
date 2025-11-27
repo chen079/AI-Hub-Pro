@@ -47,6 +47,16 @@ def load_secret_key():
     
     return new_key
 
+# ================= 【新增】加载官方 API 配置 =================
+def load_official_config():
+    try:
+        if os.path.exists('official_key.json'):
+            with open('official_key.json', 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading official_key.json: {e}")
+    return {}
+
 # ================= 配置区域 (已修改为环境切换版) =================
 
 class Config:
@@ -386,21 +396,36 @@ def upload_avatar():
 @login_required
 def test_connection():
     data = request.json
-    api_endpoint = data.get('api_endpoint', '').strip()
-    api_key = data.get('api_key', '').strip()
-
-    if not api_endpoint:
-        return jsonify({'success': False, 'message': 'API Endpoint 不能为空'})
     
-    # 如果用户没有修改 Key（前端传空），且数据库里有 Key，则使用数据库里的（需要解密）
-    if not api_key:
-        settings = json.loads(current_user.settings)
-        saved_key = settings.get('api_key', '')
-        if saved_key:
-            api_key = decrypt_val(saved_key) # 使用之前定义的解密函数
-            
-    if not api_key:
-        return jsonify({'success': False, 'message': 'API Key 不能为空'})
+    # === 新增：检查是否测试官方通道 ===
+    use_official = data.get('use_official', False)
+    paid_mode = app.config.get('PAID_MODE', False)
+
+    if use_official and paid_mode:
+        # 加载服务器端的官方配置
+        off_conf = load_official_config()
+        api_endpoint = off_conf.get('api_endpoint', '').strip()
+        api_key = off_conf.get('api_key', '').strip()
+        
+        if not api_endpoint or not api_key:
+            return jsonify({'success': False, 'message': '测试失败：服务器端官方配置缺失 (official_key.json)'})
+    else:
+        # === 原有逻辑：测试用户自定义配置 ===
+        api_endpoint = data.get('api_endpoint', '').strip()
+        api_key = data.get('api_key', '').strip()
+
+        if not api_endpoint:
+            return jsonify({'success': False, 'message': 'API Endpoint 不能为空'})
+        
+        # 尝试解密数据库存的 Key
+        if not api_key:
+            settings = json.loads(current_user.settings)
+            saved_key = settings.get('api_key', '')
+            if saved_key:
+                api_key = decrypt_val(saved_key)
+                
+        if not api_key:
+            return jsonify({'success': False, 'message': 'API Key 不能为空'})
 
     # 构造请求头
     headers = {
@@ -455,13 +480,24 @@ def parse_doc():
 @app.route('/api/fetch_models', methods=['POST'])
 @login_required
 def fetch_models():
-    """获取模型列表 (这是之前缺失的路由)"""
     settings = json.loads(current_user.settings)
-    api_key = decrypt_val(settings.get('api_key'))
-    api_endpoint = settings.get('api_endpoint')
+    
+    # === 【修改】判断是否使用官方源 ===
+    use_official = settings.get('use_official_api', False)
+    
+    # 只有在付费模式开启，且用户勾选了官方API时，才切换
+    if app.config['PAID_MODE'] and use_official:
+        off_conf = load_official_config()
+        api_key = off_conf.get('api_key')
+        api_endpoint = off_conf.get('api_endpoint')
+    else:
+        # 否则使用用户自己的
+        api_key = decrypt_val(settings.get('api_key'))
+        api_endpoint = settings.get('api_endpoint')
+    # ==================================
 
     if not api_key or not api_endpoint:
-        return jsonify({'success': False, 'message': '请先配置 API Key 和 Endpoint'})
+        return jsonify({'success': False, 'message': 'API Key 或 Endpoint 未配置'})
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -560,29 +596,49 @@ def build_dynamic_payload(template_str, model, messages, system_prompt):
 def chat(): 
     data = request.json
     messages = data.get('messages', [])
-    
     settings = json.loads(current_user.settings)
     
-    # 获取 API Key
-    raw_key = settings.get('api_key')
-    api_key = decrypt_val(raw_key)
-    if not api_key and raw_key: api_key = raw_key
+    # === 【修改】核心逻辑：判断凭证来源和扣费 ===
+    use_official = settings.get('use_official_api', False)
+    paid_mode_on = app.config.get('PAID_MODE', False)
+    
+    # 默认值
+    api_key = ""
+    api_endpoint = ""
+    
+    # 判定是否使用官方渠道
+    using_official_channel = paid_mode_on and use_official
+
+    if using_official_channel:
+        # A. 使用官方配置
+        off_conf = load_official_config()
+        api_key = off_conf.get('api_key')
+        api_endpoint = off_conf.get('api_endpoint')
+        
+        # 官方渠道强制覆盖模型（可选，或者允许用户选模型但走官方Key）
+        # model_name = settings.get('model', 'gpt-3.5-turbo') 
+        
+        if not api_key:
+            return jsonify({'error': 'Server Official Config Missing'}), 500
+    else:
+        # B. 使用用户自定义配置
+        raw_key = settings.get('api_key')
+        api_key = decrypt_val(raw_key)
+        if not api_key and raw_key: api_key = raw_key
+        api_endpoint = settings.get('api_endpoint')
+
     if not api_key: return jsonify({'error': 'No API Key Configured'}), 400
 
-    # 获取模型名称
     model_name = settings.get('model', 'gpt-3.5-turbo')
 
-    # ================= [新增] 付费模式检查逻辑 =================
-    if app.config.get('PAID_MODE', False):
+    # === 【修改】仅在使用官方渠道时扣费 ===
+    if using_official_channel:
         cost = calculate_cost(model_name)
         if current_user.points < cost:
-            # 返回 402 Payment Required 状态码，前端会据此弹出充值框
-            return jsonify({'error': f'点数不足！当前模型需要 {cost} 点，您仅有 {current_user.points} 点。请充值。'}), 402
+            return jsonify({'error': f'点数不足！官方通道需要 {cost} 点，您仅有 {current_user.points} 点。请充值或取消勾选官方API使用自己的Key。'}), 402
         
-        # 扣除点数并立即保存
         current_user.points -= cost
         db.session.commit()
-    # ========================================================
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -606,11 +662,8 @@ def chat():
     )
 
     # ================= [优化] URL 构建逻辑 =================
-    raw_endpoint = settings.get('api_endpoint', '').strip()
-    clean_endpoint = raw_endpoint.rstrip('/')
-
-    # 智能判断：如果不以 /chat/completions 结尾，则自动拼接
-    # 这样既兼容了只填 host 的用户，也兼容了填完整路径的用户
+    clean_endpoint = api_endpoint.strip().rstrip('/')
+    
     if clean_endpoint.endswith('/chat/completions'):
         url = clean_endpoint
     else:
@@ -619,6 +672,12 @@ def chat():
 
     def generate():
         try:
+            # 标记是否已经开始/结束思考，用于手动包裹 <think> 标签
+            thinking_state = {
+                'has_started': False,
+                'has_ended': False
+            }
+
             # 增加超时时间到 120秒
             with httpx.Client(timeout=120.0) as client:
                 with client.stream("POST", url, json=payload, headers=headers) as response:
@@ -632,32 +691,58 @@ def chat():
                         if line:
                             decoded_line = line
                             
-                            # 3. 处理数据前缀 (OpenAI 是 data:，有些是 event: data:)
+                            # 处理 SSE 数据前缀
                             if decoded_line.startswith("data: "):
                                 json_str = decoded_line[6:]
                             elif decoded_line.startswith("{"):
-                                json_str = decoded_line # 兼容直接返回 JSON 的流
+                                json_str = decoded_line
                             else:
                                 continue
 
                             if json_str.strip() == "[DONE]":
+                                # 如果思考还没闭合，强制闭合
+                                if thinking_state['has_started'] and not thinking_state['has_ended']:
+                                     yield f"data: {json.dumps({'choices': [{'delta': {'content': '</think>'}}]})}\n\n"
                                 yield "data: [DONE]\n\n"
                                 continue
                                 
                             try:
                                 json_data = json.loads(json_str)
                                 
-                                # 4. 使用用户自定义路径提取内容
+                                # === [修改核心] 深度适配 DeepSeek Reasoner ===
+                                # 尝试直接获取 delta 对象，应对 OpenAI 格式
+                                choices = json_data.get('choices', [])
+                                delta = choices[0].get('delta', {}) if choices else {}
+
+                                # 1. 处理思维链 (reasoning_content)
+                                reasoning = delta.get('reasoning_content', '')
+                                if reasoning:
+                                    # 如果是第一次收到思考内容，发送 <think> 标签
+                                    if not thinking_state['has_started']:
+                                        yield f"data: {json.dumps({'choices': [{'delta': {'content': '<think>'}}]})}\n\n"
+                                        thinking_state['has_started'] = True
+                                    
+                                    # 发送思考内容 (伪装成 content 发给前端，因为前端只认 content)
+                                    yield f"data: {json.dumps({'choices': [{'delta': {'content': reasoning}}]})}\n\n"
+                                    continue # 既然是思考，处理完这就跳过 content 检查
+
+                                # 2. 处理正式回答 (content)
                                 content = extract_by_path(json_data, response_path)
                                 
                                 if content:
-                                    # 重新封装成标准 OpenAI 格式发给前端，这样前端不用改解析逻辑
+                                    # 如果之前在思考且还没闭合，说明思考结束，正式回答开始，发送 </think>
+                                    if thinking_state['has_started'] and not thinking_state['has_ended']:
+                                        yield f"data: {json.dumps({'choices': [{'delta': {'content': '</think>'}}]})}\n\n"
+                                        thinking_state['has_ended'] = True
+
+                                    # 发送正式内容
                                     chunk = {
                                         "choices": [{"delta": {"content": content}}]
                                     }
                                     yield f"data: {json.dumps(chunk)}\n\n"
+
                             except Exception as e:
-                                # 忽略解析错误，继续下一行
+                                # 忽略解析错误
                                 pass
         except Exception as e:
              yield f"data: {json.dumps({'error': f'Server Error: {str(e)}'})}\n\n"

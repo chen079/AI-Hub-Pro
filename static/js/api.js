@@ -18,10 +18,11 @@ const AppAPI = {
         }
     },
 
-    async testConnection(endpoint, apiKey) {
+    async testConnection(endpoint, apiKey, useOfficial = false) {
         return this.request('/api/test_connection', 'POST', {
             api_endpoint: endpoint,
-            api_key: apiKey
+            api_key: apiKey,
+            use_official: useOfficial // 传给后端
         });
     },
 

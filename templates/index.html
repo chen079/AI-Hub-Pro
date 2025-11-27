@@ -176,22 +176,47 @@
                         </button>
                     </div>
 
+                    <!-- 付费模式开关 (新增) -->
+                    <div v-if="paidMode"
+                        class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700/50 mb-4">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-yellow-800 dark:text-yellow-400">
+                                <i class="fas fa-star mr-1"></i> 使用官方高速通道
+                            </span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="settings.use_official_api" class="sr-only peer">
+                                <div
+                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500">
+                                </div>
+                            </label>
+                        </div>
+                        <p class="text-xs text-yellow-600 dark:text-yellow-500/80 mt-1">
+                            开启后将使用平台内置 Key，稳定高速，但会消耗点数。关闭则使用下方自定义 Key (免费)。
+                        </p>
+                    </div>
+
                     <!-- API Endpoint -->
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">[[
-                            t('api_endpoint') ]]</label>
+                    <div :class="{'opacity-50 grayscale pointer-events-none': settings.use_official_api && paidMode}">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                            [[ t('api_endpoint') ]]
+                            <span v-if="settings.use_official_api && paidMode"
+                                class="text-xs text-red-500 ml-2">(官方托管中)</span>
+                        </label>
                         <input v-model="settings.api_endpoint" type="text"
-                            class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:bg-darkinput dark:border-darkborder dark:text-white">
+                            :disabled="settings.use_official_api && paidMode"
+                            class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:bg-darkinput dark:border-darkborder dark:text-white transition-all">
                     </div>
 
                     <!-- API Key -->
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">[[ t('api_key')
-                            ]]<span v-if="settings.api_key && settings.api_key.includes('***')"
+                    <div :class="{'opacity-50 grayscale pointer-events-none': settings.use_official_api && paidMode}">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                            [[ t('api_key') ]]
+                            <span v-if="settings.api_key && settings.api_key.includes('***')"
                                 class="text-xs text-green-500 font-normal ml-2">[[ t('encrypted') ]]</span>
                         </label>
                         <input v-model="settings.api_key" type="password" placeholder="sk-..."
-                            class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:bg-darkinput dark:border-darkborder dark:text-white">
+                            :disabled="settings.use_official_api && paidMode"
+                            class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:bg-darkinput dark:border-darkborder dark:text-white transition-all">
                     </div>
 
                     <!-- 模型选择 -->
@@ -1012,15 +1037,6 @@
         <!-- 隐藏的文件输入框 -->
         <input type="file" id="file-input" multiple @change="handleFileSelect" class="hidden">
     </div>
-    <script>
-        // 使用 safe 过滤器防止 Jinja2 转义引号
-        window.SHARED_MATCH_RULES = {{ rules_json | safe }};
-    </script>
-
-    <!-- 隐藏的文件输入框 -->
-    <input type="file" id="file-input" multiple @change="handleFileSelect" class="hidden">
-    </div>
-
     <script>
         // 使用 safe 过滤器防止 Jinja2 转义引号
         window.SHARED_MATCH_RULES = {{ rules_json | safe }};

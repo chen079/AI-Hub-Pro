@@ -63,7 +63,8 @@ createApp({
                 // [新增] 自定义 API 字段
                 custom_request_template: '',
                 custom_response_path: '',
-                context_length: 20
+                context_length: 20,
+                use_official_api: false // 【新增】初始化为 false
             },
 
             useCustomModel: false, // [新增]
@@ -373,34 +374,39 @@ createApp({
 
         // [新增] 处理测试连接
         async handleTestConnection() {
-            if (!this.settings.api_endpoint) {
-                AppUI.toast(this.t('config_missing'), 'error')
-                return;
-            }
+            // 判断当前是否开启了官方模式
+            const isUsingOfficial = this.paidMode && this.settings.use_official_api;
 
-            // 允许 Key 为空（如果是为了测试已保存的 Key）
-            // 但如果两个都为空肯定不行
-            if (!this.settings.api_endpoint) {
-                AppUI.toast("请输入配置信息", 'error'); return;
+            // 只有在使用自定义配置时，才校验输入框
+            if (!isUsingOfficial) {
+                if (!this.settings.api_endpoint) {
+                    AppUI.toast("请先输入 API Endpoint", 'error');
+                    return;
+                }
+                // 允许 Key 为空(测试已保存的)，但如果都没填提示一下
+                if (!this.settings.api_endpoint) {
+                    AppUI.toast("请输入配置信息", 'error'); return;
+                }
             }
 
             this.isTestingConnection = true;
             try {
-                // 调用 API.js 中的方法
+                // 传入第三个参数 isUsingOfficial
                 const res = await AppAPI.testConnection(
                     this.settings.api_endpoint,
-                    this.settings.api_key // 传入当前输入框的值
+                    this.settings.api_key,
+                    isUsingOfficial
                 );
 
                 if (res.success) {
                     AppUI.toast(res.message, 'success');
-                    // 如果测试成功，自动刷新一下模型列表，方便用户选择
+                    // 测试成功后自动刷新模型列表
                     this.fetchModels();
                 } else {
                     AppUI.toast(res.message, 'error');
                 }
             } catch (e) {
-                AppUI.toast(this.t('request_fail'), 'error');
+                AppUI.toast("请求发送失败，请检查网络连接", 'error');
                 console.error(e);
             } finally {
                 this.isTestingConnection = false;
@@ -738,6 +744,7 @@ createApp({
 
                     // 重点：出错后也要保存会话！这样刷新后能在历史记录看到报错信息
                     await this.saveCurrentSessionData();
+
                     this.smartScrollToBottom();
                 }
             });
