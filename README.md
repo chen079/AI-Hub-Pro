@@ -80,6 +80,9 @@ python app.py
 ```
 Open your browser and visit: `http://127.0.0.1:5000`
 
+#### PLUS: "run.bat"
+we create a script, you can start "run.bat" to use the app directly.
+
 ### 📖 Usage Guide
 
 1. **Register/Login**: Click "Create Account" on the login page.
@@ -158,6 +161,9 @@ app.config['SECRET_KEY'] = '请修改这里为一个随机字符串'
 python app.py
 ```
 访问浏览器：`http://127.0.0.1:5000`
+
+#### PLUS: run.bat
+我们创建了运行脚本 run.bat，只需要双击即可引导你部署该应用。
 
 ### 📖 使用指南
 
