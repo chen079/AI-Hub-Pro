@@ -188,6 +188,75 @@ createApp({
             this.updateHtmlClass();
         },
 
+        // [新增] 1. 复制消息
+        async copyMessage(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                // 这里可以做一个简易的 Toast 提示，或者简单弹个窗，或者利用按钮变色
+                // 为了简单起见，我们暂时只在控制台输出，或者你可以 alert('已复制')
+                console.log('Copied');
+            } catch (err) {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制');
+            }
+        },
+
+        // [新增] 2. 删除单条消息
+        async deleteMessage(index) {
+            if (!confirm('确定删除这条消息吗？')) return;
+
+            this.messages.splice(index, 1);
+            await this.saveCurrentSessionData();
+        },
+
+        // [新增] 3. 编辑消息
+        async editMessage(index) {
+            const msg = this.messages[index];
+            // 如果内容太长，prompt 体验不好，但对于简单编辑足够了
+            // 进阶做法是把气泡变成 textarea，这里先用 prompt 实现
+            const newContent = prompt("编辑消息内容：", msg.content);
+
+            if (newContent !== null && newContent.trim() !== "") {
+                msg.content = newContent;
+                await this.saveCurrentSessionData();
+            }
+        },
+
+        // [新增] 4. 重新生成 (高级功能)
+        async regenerateResponse(aiIndex) {
+            if (this.isThinking || this.isStreaming) return;
+
+            // 1. 找到该消息在数组中的位置
+            // 如果传入了 index 就用 index，否则默认重试最后一条
+            let targetIndex = aiIndex;
+            if (targetIndex === undefined) {
+                targetIndex = this.messages.length - 1;
+            }
+
+            // 2. 校验：确保它是 AI 的消息
+            if (targetIndex < 0 || this.messages[targetIndex].role === 'user') {
+                return; // 不能重试用户的消息，除非你只想重发
+            }
+
+            // 3. 删除这条 AI 消息
+            this.messages.splice(targetIndex, 1);
+
+            // 4. 立即调用核心请求函数
+            // streamResponse 会自动读取 this.messages 里的最后一条（即上一条 User 消息）作为 prompt
+            await this.streamResponse();
+        },
+
+        // [新增] 辅助函数：保存当前会话数据到数据库
+        async saveCurrentSessionData() {
+            if (this.currentSessionId) {
+                const session = this.sessions.find(s => s.id === this.currentSessionId);
+                if (session) {
+                    session.messages = this.messages;
+                    await AppDB.saveSession(session);
+                }
+            }
+        },
+
         // [新增] 重命名当前会话
         async renameSession(id) {
             // 1. 找到对应的会话对象
@@ -368,89 +437,49 @@ createApp({
         // ===========================
         // 3. 聊天核心逻辑
         // ===========================
-        async sendMessage() {
-            // 校验
-            if ((!this.inputMessage.trim() && this.attachedFiles.length === 0) || this.isThinking) return;
 
-            const textContent = this.inputMessage;
-            const currentFiles = [...this.attachedFiles]; // 快照
+        // [新增] 核心：处理 API 请求与流式响应
+        async streamResponse() {
+            if (this.isThinking) return;
+            this.isThinking = true;
+            this.isStreaming = false; // 准备开始流传输
 
-            // 清空输入
-            this.inputMessage = '';
-            this.attachedFiles = [];
+            // 1. 构建 API 消息格式 (OpenAI 兼容)
+            // 这里复用了之前修复过的“带图片”的逻辑
+            const apiMessages = this.messages.map((msg, index) => {
+                // 判断逻辑：如果是最后一条用户消息，且包含文件，则组装多模态格式
+                // 注意：在重新生成时，最后一条通常是 User 消息
+                const isLastUserMsg = (msg.role === 'user' && index === this.messages.length - 1);
+                const hasFiles = msg.files && msg.files.length > 0;
 
-            // 1. 获取或创建会话
-            let session;
-            if (!this.currentSessionId) {
-                session = await this.createSessionObject(textContent || '媒体消息');
-            } else {
-                session = this.sessions.find(s => s.id === this.currentSessionId);
-            }
-
-            // 2. 推送用户消息上屏
-            const userMsg = {
-                role: 'user',
-                content: textContent,
-                files: currentFiles, // 保留原始文件引用用于展示
-                model: this.settings.model
-            };
-            this.messages.push(userMsg);
-            this.smartScrollToBottom(true);
-
-            // 3. [文档解析步骤]
-            // 如果上传了文档，先请求后端解析，将文本附加到 User Context 中
-            let finalPrompt = textContent;
-            const docFiles = currentFiles.filter(f => f.type === 'doc');
-
-            if (docFiles.length > 0) {
-                // 临时显示正在解析
-                this.messages.push({ role: 'assistant', content: 'Processing documents...', model: 'System' });
-                this.smartScrollToBottom();
-
-                for (let fileObj of docFiles) {
-                    const extractedText = await AppAPI.parseDocument(fileObj.raw);
-                    if (extractedText) {
-                        finalPrompt += `\n\n--- Document: ${fileObj.name} ---\n${extractedText}\n----------------\n`;
-                    }
-                }
-                // 移除临时消息
-                this.messages.pop();
-            }
-
-            // 4. 构建 API 消息格式 (OpenAI 兼容)
-            const apiMessages = this.messages.map(msg => {
-                // 处理当前发送的消息
-                if (msg === userMsg) {
+                if (isLastUserMsg && hasFiles) {
                     const contentParts = [];
-                    // 添加文本 (包含了解析后的文档内容)
-                    if (finalPrompt) contentParts.push({ type: "text", text: finalPrompt });
+                    if (msg.content) contentParts.push({ type: "text", text: msg.content });
 
-                    // 添加图片 (Vision API)
                     msg.files.forEach(f => {
                         if (f.type === 'image') {
-                            contentParts.push({ type: "image_url", image_url: { url: f.content } });
+                            contentParts.push({ type: "image_url", image_url: { url: f.content, detail: "auto" } });
                         }
                     });
 
+                    // 只有文本
                     if (contentParts.length === 1 && contentParts[0].type === 'text') {
-                        return { role: "user", content: finalPrompt };
+                        return { role: msg.role, content: msg.content };
                     }
-                    return { role: "user", content: contentParts };
+                    return { role: msg.role, content: contentParts };
                 }
 
-                // 处理历史消息 (简化处理，不回传过大的历史图片/文档以省 Token)
-                // 如果需要回传历史图片，需在此处展开 msg.files
+                // 历史消息只传文本
                 return { role: msg.role, content: msg.content };
             });
 
-            // 5. 准备接收回复
-            this.isThinking = true;
-            let aiMsgIndex = -1;
+            // 2. 准备接收回复
+            let aiMsgIndex = -1; // 标记 AI 消息在数组中的位置
 
             await AppAPI.chatStream({ messages: apiMessages }, {
                 onChunk: (text) => {
-                    this.isThinking = false;
-                    this.isStreaming = true;
+                    this.isThinking = false; // 第一帧到达，停止思考动画
+                    this.isStreaming = true; // 开始流式传输状态
 
                     // 如果是第一帧，创建 AI 消息气泡
                     if (aiMsgIndex === -1) {
@@ -459,24 +488,84 @@ createApp({
                     }
 
                     this.messages[aiMsgIndex].content += text;
-                    // 智能滚动：只有用户在底部时才滚
                     if (this.isUserAtBottom) this.smartScrollToBottom();
                 },
                 onDone: async () => {
                     this.isThinking = false;
                     this.isStreaming = false;
-                    if (session) {
-                        session.messages = this.messages;
-                        await AppDB.saveSession(session);
+
+                    // 保存会话
+                    if (this.currentSessionId) {
+                        const session = this.sessions.find(s => s.id === this.currentSessionId);
+                        if (session) {
+                            session.messages = this.messages;
+                            await AppDB.saveSession(session);
+                        }
+                    } else if (this.messages.length > 0) {
+                        // 极少情况：如果还没创建会话对象（通常 sendMessage 会创建）
+                        // 这里可以补救，暂略
                     }
                     this.smartScrollToBottom();
                 },
                 onError: (err) => {
                     this.isThinking = false;
+                    this.isStreaming = false;
                     this.messages.push({ role: 'assistant', content: `Error: ${err}`, model: 'System' });
                     this.smartScrollToBottom();
                 }
             });
+        },
+
+        // [重构] 发送消息入口
+        async sendMessage() {
+            // 校验
+            if ((!this.inputMessage.trim() && this.attachedFiles.length === 0) || this.isThinking) return;
+
+            const textContent = this.inputMessage;
+            const currentFiles = [...this.attachedFiles];
+
+            // 清空输入
+            this.inputMessage = '';
+            this.attachedFiles = [];
+
+            // 1. 获取或创建会话
+            if (!this.currentSessionId) {
+                await this.createSessionObject(textContent || '媒体消息');
+            }
+
+            // 2. [文档解析]
+            // 如果有文档，先解析并将文本附加到 prompt 中
+            // 注意：为了让“重新生成”也能带上文档内容，我们直接把解析后的文本拼接到消息里
+            let finalPrompt = textContent;
+            const docFiles = currentFiles.filter(f => f.type === 'doc');
+
+            if (docFiles.length > 0) {
+                // 临时显示提示
+                const loadingMsgIndex = this.messages.push({ role: 'assistant', content: '正在解析文档...', model: 'System' }) - 1;
+                this.smartScrollToBottom();
+
+                for (let fileObj of docFiles) {
+                    const extractedText = await AppAPI.parseDocument(fileObj.raw);
+                    if (extractedText) {
+                        finalPrompt += `\n\n--- Document: ${fileObj.name} ---\n${extractedText}\n----------------\n`;
+                    }
+                }
+                // 移除临时提示
+                this.messages.splice(loadingMsgIndex, 1);
+            }
+
+            // 3. 推送用户消息上屏
+            const userMsg = {
+                role: 'user',
+                content: finalPrompt, // 这里包含了文档内容，确保重试时有效
+                files: currentFiles,
+                model: this.settings.model
+            };
+            this.messages.push(userMsg);
+            this.smartScrollToBottom(true);
+
+            // 4. 调用核心流式请求
+            await this.streamResponse();
         },
 
         // ===========================

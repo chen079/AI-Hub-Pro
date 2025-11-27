@@ -622,18 +622,21 @@
                     <!-- 消息滚动区 -->
                     <div class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth" id="chat-container"
                         @scroll="handleScroll">
+                        <!-- 消息循环体 -->
                         <div v-for="(msg, index) in messages" :key="index"
-                            class="flex flex-col w-full animate-fade-in max-w-4xl mx-auto"
+                            class="flex flex-col w-full animate-fade-in max-w-4xl mx-auto group mb-6"
                             :class="msg.role === 'user' ? 'items-end' : 'items-start'">
 
+                            <!-- 1. 发送者名字 (保持不变) -->
                             <div class="text-xs text-gray-400 mb-1 px-1 select-none">
                                 [[ msg.role === 'user' ? authForm.username : (msg.model || 'AI') ]]
                             </div>
 
+                            <!-- 2. 消息主体区域 (头像 + 气泡) -->
                             <div class="flex w-full max-w-[95%] md:max-w-[85%]"
                                 :class="msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'">
 
-                                <!-- 头像 -->
+                                <!-- 头像 (保持不变) -->
                                 <div
                                     class="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center border border-gray-100 dark:border-gray-700 bg-white dark:bg-darkinput shadow-sm mx-2 p-1">
                                     <template v-if="msg.role === 'user'">
@@ -649,52 +652,64 @@
                                     </template>
                                 </div>
 
-                                <!-- 气泡内容 -->
+                                <!-- 气泡内容 (保持不变，只是去掉了 min-w-[120px] 修复了之前的 bug) -->
                                 <div class="text-sm md:text-base leading-relaxed overflow-hidden pt-1 min-w-[60px]">
+                                    <!-- 用户气泡 -->
                                     <div v-if="msg.role === 'user'"
-                                        class="bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-sm whitespace-pre-wrap shadow-sm inline-block">
-
-                                        <!-- === 用户发送的文件展示区 === -->
+                                        class="bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-sm whitespace-pre-wrap shadow-sm inline-block text-left">
+                                        <!-- 文件展示 -->
                                         <div v-if="msg.files && msg.files.length > 0" class="flex flex-col gap-2 mb-2">
                                             <div v-for="(f, fIdx) in msg.files" :key="fIdx">
-
-                                                <!-- 1. 图片 -->
                                                 <img v-if="f.type==='image'" :src="f.content"
                                                     class="chat-image-preview border-white/20">
-
-                                                <!-- 2. 音频 -->
-                                                <div v-else-if="f.type==='audio'" class="bg-white/10 p-2 rounded-lg">
-                                                    <div class="text-xs opacity-75 mb-1"><i
-                                                            class="fas fa-music mr-1"></i> [[ f.name ]]</div>
-                                                    <audio :src="f.content" controls
-                                                        class="chat-audio-player h-8 w-full"></audio>
-                                                </div>
-
-                                                <!-- 3. 视频 -->
-                                                <div v-else-if="f.type==='video'" class="bg-white/10 p-2 rounded-lg">
-                                                    <div class="text-xs opacity-75 mb-1"><i
-                                                            class="fas fa-video mr-1"></i> [[ f.name ]]</div>
-                                                    <video :src="f.content" controls class="chat-video-player"></video>
-                                                </div>
-
-                                                <!-- 4. 文档 -->
                                                 <div v-else
                                                     class="flex items-center gap-2 bg-white/20 p-2 rounded text-sm">
-                                                    <i class="fas fa-file-alt"></i>
-                                                    <span class="truncate">[[ f.name ]]</span>
+                                                    <i class="fas fa-file-alt"></i> <span class="truncate">[[ f.name
+                                                        ]]</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <!-- ========================== -->
-
                                         [[ msg.content ]]
                                     </div>
 
+                                    <!-- AI 气泡 -->
                                     <div v-else
                                         class="markdown-body dark:markdown-dark text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-darkinput px-4 py-2.5 rounded-2xl rounded-tl-sm border border-gray-100 dark:border-darkborder shadow-sm inline-block"
                                         v-html="renderContent(msg.content)"></div>
                                 </div>
                             </div>
+
+                            <!-- 3. [新增] 底部操作栏 -->
+                            <!-- opacity-0 group-hover:opacity-100 实现鼠标悬停显示 -->
+                            <div class="flex items-center gap-3 mt-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                :class="msg.role === 'user' ? 'justify-end pr-14' : 'justify-start pl-14'">
+
+                                <!-- 复制按钮 -->
+                                <button @click="copyMessage(msg.content)" title="复制内容"
+                                    class="hover:text-blue-500 transition flex items-center gap-1">
+                                    <i class="fas fa-copy"></i> 复制
+                                </button>
+
+                                <!-- 编辑按钮 -->
+                                <button @click="editMessage(index)" title="编辑内容"
+                                    class="hover:text-green-500 transition flex items-center gap-1">
+                                    <i class="fas fa-pen"></i> 编辑
+                                </button>
+
+                                <!-- 删除按钮 -->
+                                <button @click="deleteMessage(index)" title="删除消息"
+                                    class="hover:text-red-500 transition flex items-center gap-1">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+
+                                <!-- (可选) AI 消息如果是最后一条，显示重新生成 -->
+                                <button v-if="msg.role !== 'user' && index === messages.length - 1 && !isThinking"
+                                    @click="regenerateResponse(index)" title="重新生成"
+                                    class="hover:text-purple-500 transition flex items-center gap-1">
+                                    <i class="fas fa-sync-alt"></i> 重试
+                                </button>
+                            </div>
+
                         </div>
 
                         <!-- Thinking 状态 -->

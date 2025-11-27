@@ -72,7 +72,7 @@ const AppAPI = {
         }
     },
 
-    // [核心] 流式对话请求
+    // [核心] 流式对话请求 (修复了长数据截断 bug)
     async chatStream(params, callbacks) {
         const { messages } = params;
         const { onChunk, onDone, onError } = callbacks;
@@ -92,21 +92,32 @@ const AppAPI = {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
+            // === 修复点：增加缓冲区 ===
+            let buffer = '';
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
+                // 1. 解码当前块并追加到缓冲区
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                buffer += chunk;
 
+                // 2. 按换行符分割 (流式数据以 \n 分隔)
+                const lines = buffer.split('\n');
+
+                // 3. 拿出最后一段 (因为最后一段可能还没传完，是不完整的)
+                // 将其保留在 buffer 中，等待下一次拼接
+                buffer = lines.pop();
+
+                // 4. 处理前面完整的行
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         const jsonStr = line.substring(6).trim();
                         if (!jsonStr || jsonStr === '[DONE]') continue;
 
-                        // 尝试解析 JSON，如果包含 error 则抛出，否则直接返回内容
                         try {
-                            // 兼容直接返回文本或OpenAI格式
+                            // 尝试解析 JSON
                             if (jsonStr.startsWith('{')) {
                                 const json = JSON.parse(jsonStr);
                                 if (json.error) {
@@ -121,8 +132,10 @@ const AppAPI = {
                                 onChunk(jsonStr);
                             }
                         } catch (e) {
-                            // 如果不是JSON，直接作为文本处理 (容错)
-                            onChunk(jsonStr);
+                            // 只有在确定是一整行数据解析失败时，才当作文本输出
+                            // 但因为我们已经处理了 buffer，这里出错通常是真的非 JSON 数据
+                            // onChunk(jsonStr); // 建议注释掉这行，防止报错信息混入图片数据
+                            console.warn("JSON Parse Error (Ignore):", e);
                         }
                     }
                 }
