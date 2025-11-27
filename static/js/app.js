@@ -738,7 +738,6 @@ createApp({
 
                     // 重点：出错后也要保存会话！这样刷新后能在历史记录看到报错信息
                     await this.saveCurrentSessionData();
-
                     this.smartScrollToBottom();
                 }
             });

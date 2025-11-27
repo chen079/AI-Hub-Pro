@@ -1017,6 +1017,15 @@
         window.SHARED_MATCH_RULES = {{ rules_json | safe }};
     </script>
 
+    <!-- 隐藏的文件输入框 -->
+    <input type="file" id="file-input" multiple @change="handleFileSelect" class="hidden">
+    </div>
+
+    <script>
+        // 使用 safe 过滤器防止 Jinja2 转义引号
+        window.SHARED_MATCH_RULES = {{ rules_json | safe }};
+    </script>
+
     <!-- 模块化脚本引用 -->
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/ui.js"></script>
