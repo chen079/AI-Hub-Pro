@@ -165,7 +165,55 @@
                                 placeholder="例如: gpt-4-turbo">
                         </div>
                     </div>
+                    <!-- === 新增：自定义 API 适配 === -->
+                    <div class="border border-gray-200 dark:border-darkborder rounded-lg overflow-hidden">
+                        <button @click="showAdvancedApi = !showAdvancedApi"
+                            class="w-full flex justify-between items-center p-3 bg-gray-100 dark:bg-darkinput text-xs font-bold text-gray-700 dark:text-gray-300">
+                            <span><i class="fas fa-code-branch mr-2"></i>自定义 API 协议适配 (高级)</span>
+                            <i class="fas" :class="showAdvancedApi ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                        </button>
 
+                        <div v-show="showAdvancedApi"
+                            class="p-4 bg-white dark:bg-darkcard space-y-4 text-sm animate-fade-in-up">
+
+                            <div
+                                class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-xs text-blue-600 dark:text-blue-300 mb-2">
+                                如果你的 API 不遵循 OpenAI 标准，请在此配置。支持占位符：<br>
+                                <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">"{{MESSAGES}}"</code>
+                                <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">"{{MODEL}}"</code>
+                            </div>
+
+                            <!-- 请求体模板 -->
+                            <div>
+                                <label class="block font-semibold mb-1 text-gray-600 dark:text-gray-400">Request JSON
+                                    Template</label>
+                                <textarea v-model="settings.custom_request_template" rows="6"
+                                    class="w-full p-2 font-mono text-xs border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-darkinput dark:text-gray-300 outline-none focus:border-blue-500"
+                                    placeholder='默认 (OpenAI):
+{
+"model": "{{MODEL}}",
+"messages": "{{MESSAGES}}",
+"stream": true,
+"temperature": 0.7
+}'></textarea>
+                            </div>
+
+                            <!-- 响应提取路径 -->
+                            <div>
+                                <label class="block font-semibold mb-1 text-gray-600 dark:text-gray-400">Response Data
+                                    Path</label>
+                                <input v-model="settings.custom_response_path" type="text"
+                                    class="w-full p-2 font-mono text-xs border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-darkinput dark:text-gray-300 outline-none focus:border-blue-500"
+                                    placeholder="默认: choices[0].delta.content">
+                                <p class="text-xs text-gray-400 mt-1">例如 Gemini: <code
+                                        class="bg-gray-100 dark:bg-gray-700 px-1">candidates[0].content.parts[0].text</code>
+                                </p>
+                            </div>
+
+                            <button @click="resetApiSettings"
+                                class="text-xs text-red-500 hover:underline">恢复默认设置</button>
+                        </div>
+                    </div>
                     <!-- 用户头像 -->
                     <div
                         class="bg-gray-50 dark:bg-darkinput p-3 rounded-lg border border-gray-200 dark:border-darkborder flex items-center justify-between">
@@ -404,16 +452,29 @@
 
                 <div class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                     <div class="text-xs text-gray-400 font-medium px-3 py-2">历史记录</div>
+                    <!-- 侧边栏历史记录循环 -->
                     <div v-for="session in sessions" :key="session.id" @click="selectSession(session.id)"
                         class="session-item p-3 rounded-lg cursor-pointer flex justify-between items-center group transition"
                         :class="currentSessionId === session.id ? 'bg-gray-200 dark:bg-blue-900 dark:text-white text-gray-900 font-medium' : 'hover:bg-gray-200 dark:hover:bg-darkinput text-gray-600 dark:text-gray-300'">
 
                         <div class="truncate text-sm flex-1 pr-2">[[ session.title || '新对话' ]]</div>
+
+                        <!-- 这里的 session-actions 默认是不显示的(opacity-0)，鼠标悬停(group-hover)才显示 -->
                         <div
-                            class="session-actions flex space-x-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button @click.stop="deleteSession(session.id)"
-                                class="p-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"><i
-                                    class="fas fa-trash"></i></button>
+                            class="session-actions flex items-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+
+                            <!-- [新增] 重命名按钮 -->
+                            <button @click.stop="renameSession(session.id)" title="重命名"
+                                class="p-1.5 mr-1 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition">
+                                <i class="fas fa-pen"></i>
+                            </button>
+
+                            <!-- 原有的 删除按钮 -->
+                            <button @click.stop="deleteSession(session.id)" title="删除"
+                                class="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition">
+                                <i class="fas fa-trash"></i>
+                            </button>
+
                         </div>
                     </div>
                 </div>

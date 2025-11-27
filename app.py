@@ -330,6 +330,74 @@ def fetch_models():
     except Exception as e:
         return jsonify({'success': False, 'message': f"Network Error: {str(e)}"})
 
+# ================= 新增辅助函数 =================
+
+def extract_by_path(json_obj, path_str):
+    """
+    根据点号路径提取 JSON 内容
+    例如: path="choices[0].delta.content" -> json_obj['choices'][0]['delta']['content']
+    """
+    try:
+        keys = path_str.replace('[', '.').replace(']', '').split('.')
+        current = json_obj
+        for key in keys:
+            if key == '': continue
+            if isinstance(current, list):
+                key = int(key) # 处理数组索引
+            current = current[key]
+        return current
+    except:
+        return None
+
+def build_dynamic_payload(template_str, model, messages, system_prompt):
+    """
+    根据用户定义的 JSON 模板构建请求体
+    """
+    try:
+        # 如果模板为空，返回默认 OpenAI 格式
+        if not template_str:
+            return {
+                "model": model,
+                "messages": [{"role": "system", "content": system_prompt}] + messages,
+                "temperature": 0.7,
+                "stream": True
+            }
+
+        # 1. 预处理：将模板解析为 Python 对象
+        payload = json.loads(template_str)
+
+        # 2. 递归替换函数
+        def recursive_replace(obj):
+            if isinstance(obj, dict):
+                return {k: recursive_replace(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [recursive_replace(i) for i in obj]
+            elif isinstance(obj, str):
+                # 替换占位符
+                if obj == "{{MESSAGES}}":
+                    return [{"role": "system", "content": system_prompt}] + messages
+                if obj == "{{MODEL}}":
+                    return model
+                if obj == "{{SYSTEM_PROMPT}}":
+                    return system_prompt
+                # 如果用户需要纯文本 Prompt (用于 Completions API)
+                if obj == "{{LAST_MSG_CONTENT}}":
+                    return messages[-1]['content'] if messages else ""
+                return obj
+            else:
+                return obj
+
+        return recursive_replace(payload)
+    except Exception as e:
+        print(f"Payload Build Error: {e}")
+        # 出错回退到默认
+        return {
+            "model": model,
+            "messages": [{"role": "system", "content": system_prompt}] + messages,
+            "temperature": 0.7,
+            "stream": True
+        }
+    
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat(): 
@@ -348,70 +416,70 @@ def chat():
         "Content-Type": "application/json"
     }
     
-    # 视频/绘图模型通常需要更长的超时时间
-    model_name = settings.get('model', 'gpt-3.5-turbo').lower()
-    is_media_model = any(k in model_name for k in ['suno', 'luma', 'runway', 'kling', 'video', 'mj', 'midjourney', 'flux'])
-    timeout_val = 300.0 if is_media_model else 120.0
+    # 1. 获取用户自定义配置
+    request_template = settings.get('custom_request_template', '')
+    response_path = settings.get('custom_response_path', '')
+    
+    # 如果用户没填，使用默认 OpenAI 路径
+    if not response_path:
+        response_path = "choices[0].delta.content"
 
-    payload = {
-        "model": settings.get('model', 'gpt-3.5-turbo'),
-        "messages": [{"role": "system", "content": settings.get('system_prompt', '')}] + messages,
-        "temperature": 0.7,
-        "stream": True # 始终尝试流式，但要做好回退准备
-    }
+    # 2. 构建动态 Payload
+    payload = build_dynamic_payload(
+        request_template, 
+        settings.get('model', 'gpt-3.5-turbo'), 
+        messages, 
+        settings.get('system_prompt', '')
+    )
 
     url = f"{settings.get('api_endpoint', '').rstrip('/')}/chat/completions"
+    
+    # 注意：如果用户自定义了 Endpoint 的完整路径（不仅是 host），这里需要处理
+    # 简单的做法：如果 Endpoint 以 http 开头且包含 /chat/completions 等后缀，就不拼接
+    # 这里为了兼容性，假设用户填写的只是 Base URL
 
     def generate():
         try:
-            with httpx.Client(timeout=timeout_val) as client:
-                # 使用 stream 上下文
+            # 增加超时时间
+            with httpx.Client(timeout=120.0) as client:
                 with client.stream("POST", url, json=payload, headers=headers) as response:
                     
                     if response.status_code != 200:
                         err_text = response.read().decode('utf-8')
-                        yield f"data: {json.dumps({'error': f'Provider Error {response.status_code}: {err_text}'})}\n\n"
+                        yield f"data: {json.dumps({'error': f'API Error {response.status_code}: {err_text}'})}\n\n"
                         return
 
-                    # === 核心修改：检测 Content-Type ===
-                    # 如果聚合 API 返回的是 application/json 而不是 text/event-stream
-                    # 说明它不支持流式，或者直接返回了结果（常见于绘画/视频任务）
-                    content_type = response.headers.get('content-type', '')
-                    
-                    if 'application/json' in content_type:
-                        # 读取完整响应
-                        full_resp = response.read().decode('utf-8')
-                        try:
-                            resp_json = json.loads(full_resp)
-                            # 模拟流式格式发送给前端
-                            # 提取 content (兼容 OpenAI 格式)
-                            content = ""
-                            if 'choices' in resp_json and len(resp_json['choices']) > 0:
-                                msg = resp_json['choices'][0].get('message', {})
-                                content = msg.get('content', '')
+                    for line in response.iter_lines():
+                        if line:
+                            decoded_line = line
                             
-                            # 发送数据块
-                            chunk = {
-                                "choices": [{"delta": {"content": content}}]
-                            }
-                            yield f"data: {json.dumps(chunk)}\n\n"
-                            yield "data: [DONE]\n\n"
-                        except Exception as e:
-                            yield f"data: {json.dumps({'error': f'Parse Error: {str(e)}'})}\n\n"
-                    else:
-                        # 标准流式处理
-                        for line in response.iter_lines():
-                            if line:
-                                decoded_line = line # httpx iter_lines 已经是解码后的字符串
-                                if decoded_line.startswith("data: "):
-                                    yield f"{decoded_line}\n\n"
-                                else:
-                                    # 某些非标准 API 可能直接返回 JSON 行
-                                    try:
-                                        json.loads(decoded_line)
-                                        yield f"data: {decoded_line}\n\n"
-                                    except:
-                                        pass
+                            # 3. 处理数据前缀 (OpenAI 是 data:，有些是 event: data:)
+                            if decoded_line.startswith("data: "):
+                                json_str = decoded_line[6:]
+                            elif decoded_line.startswith("{"):
+                                json_str = decoded_line # 兼容直接返回 JSON 的流
+                            else:
+                                continue
+
+                            if json_str.strip() == "[DONE]":
+                                yield "data: [DONE]\n\n"
+                                continue
+                                
+                            try:
+                                json_data = json.loads(json_str)
+                                
+                                # 4. 使用用户自定义路径提取内容
+                                content = extract_by_path(json_data, response_path)
+                                
+                                if content:
+                                    # 重新封装成标准 OpenAI 格式发给前端，这样前端不用改解析逻辑
+                                    chunk = {
+                                        "choices": [{"delta": {"content": content}}]
+                                    }
+                                    yield f"data: {json.dumps(chunk)}\n\n"
+                            except Exception as e:
+                                # 忽略解析错误，继续下一行
+                                pass
         except Exception as e:
              yield f"data: {json.dumps({'error': f'Server Error: {str(e)}'})}\n\n"
 

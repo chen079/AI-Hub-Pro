@@ -21,6 +21,7 @@ createApp({
             isDarkMode: false,
             showAbout: false, // [新增] 控制关于弹窗显示
             isUserAtBottom: true,
+            showAdvancedApi: false,
 
             // --- 数据 ---
             authForm: { username: '', password: '' },
@@ -32,7 +33,10 @@ createApp({
                 model: 'gpt-3.5-turbo',
                 system_prompt: 'You are a helpful assistant.',
                 user_avatar: '',
-                dark_mode: false
+                dark_mode: false,
+                // [新增] 自定义 API 字段
+                custom_request_template: '',
+                custom_response_path: ''
             },
 
             useCustomModel: false, // [新增]
@@ -182,6 +186,24 @@ createApp({
             // 应用暗黑模式
             this.isDarkMode = !!this.settings.dark_mode;
             this.updateHtmlClass();
+        },
+
+        // [新增] 重命名当前会话
+        async renameSession(id) {
+            // 1. 找到对应的会话对象
+            const session = this.sessions.find(s => s.id === id);
+            if (!session) return;
+
+            // 2. 弹出输入框
+            const newTitle = prompt("重命名对话：", session.title);
+
+            // 3. 如果用户输入了内容并且不是空的
+            if (newTitle !== null && newTitle.trim() !== "") {
+                session.title = newTitle.trim();
+
+                // 保存到 IndexedDB
+                await AppDB.saveSession(session);
+            }
         },
 
         // [新增] 处理测试连接
@@ -335,6 +357,12 @@ createApp({
                 }
             }
             this.saveSettings();
+        },
+
+        resetApiSettings() {
+            if (!confirm("确定要清空自定义配置并恢复默认吗？")) return;
+            this.settings.custom_request_template = ''; // 空代表使用后端默认
+            this.settings.custom_response_path = '';    // 空代表使用后端默认
         },
 
         // ===========================
