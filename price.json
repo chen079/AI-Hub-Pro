@@ -1,0 +1,19 @@
+{
+  "default": 100,
+  "providers": {
+    "openai": 200,
+    "claude": 200,
+    "google": 100,
+    "deepseek": 50,
+    "midjourney": 500,
+    "stability": 300,
+    "suno": 600,
+    "luma": 800,
+    "runway": 800
+  },
+  "overrides": {
+    "gpt-4": 500,
+    "o1-": 800,
+    "claude-3-opus": 600
+  }
+}

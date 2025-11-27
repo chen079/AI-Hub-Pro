@@ -259,7 +259,52 @@
             </div>
         </div>
 
-        <!-- index.html -->
+        <!-- ==================== [新增] 充值/点数 模态框 ==================== -->
+        <div v-if="showTopUpModal" class="settings-modal-overlay" style="z-index: 250;"
+            @click.self="showTopUpModal = false">
+            <div
+                class="settings-modal flex flex-col animate-fade-in-up bg-white dark:bg-darkcard dark:text-gray-200 w-[90%] max-w-sm overflow-hidden">
+
+                <!-- 头部 -->
+                <div class="bg-gradient-to-r from-yellow-400 to-orange-500 p-6 text-white relative">
+                    <button @click="showTopUpModal = false"
+                        class="absolute top-4 right-4 text-white/80 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                    <div class="text-sm font-medium opacity-90 mb-1">当前余额</div>
+                    <div class="text-4xl font-bold flex items-baseline">
+                        <i class="fas fa-coins mr-2 text-2xl"></i> [[ userPoints ]]
+                    </div>
+                </div>
+
+                <!-- 套餐列表 -->
+                <div class="p-6 space-y-4">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">选择充值套餐 (DeepSeek ≈ 100点/条)</p>
+
+                    <div class="grid grid-cols-1 gap-3">
+                        <button v-for="opt in topUpOptions" :key="opt.price" @click="handleTopUp(opt.points)"
+                            class="flex justify-between items-center p-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 hover:border-yellow-400 dark:hover:border-yellow-500 bg-white dark:bg-darkinput transition group">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400 group-hover:scale-110 transition">
+                                    <i class="fas fa-gem"></i>
+                                </div>
+                                <div class="text-left">
+                                    <div class="font-bold text-gray-800 dark:text-gray-200">[[ opt.points ]] 点</div>
+                                    <div class="text-xs text-gray-400">[[ opt.label ]]</div>
+                                </div>
+                            </div>
+                            <div class="text-lg font-bold text-blue-600 dark:text-blue-400">[[ opt.price ]]</div>
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    class="p-4 bg-gray-50 dark:bg-darkinput border-t dark:border-darkborder text-center text-xs text-gray-400">
+                    仅用于演示，不会发生真实扣款
+                </div>
+            </div>
+        </div>
 
         <!-- ==================== [新增] 关于/版权模态框 ==================== -->
         <div v-if="showAbout" class="settings-modal-overlay" style="z-index: 300;" @click.self="showAbout = false">
@@ -440,8 +485,9 @@
         <div v-if="isLoggedIn" class="flex flex-1 h-full w-full relative">
 
             <!-- 左侧边栏 -->
-            <div class="bg-gray-50 dark:bg-darkcard dark:border-darkborder flex flex-col shadow-lg z-20 transition-all duration-300 flex-shrink-0 border-r border-gray-200"
-                :class="showSidebar ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:w-0 md:translate-x-0 overflow-hidden'">
+            <!-- 左侧边栏 -->
+            <div class="bg-gray-50 dark:bg-darkcard dark:border-darkborder flex flex-col shadow-lg z-20 transition-all duration-300 flex-shrink-0 border-gray-200"
+                :class="showSidebar ? 'w-64 translate-x-0 border-r' : 'w-0 -translate-x-full border-none md:w-0 md:translate-x-0 overflow-hidden'">
 
                 <div class="p-4 flex justify-between items-center flex-shrink-0 h-16 border-b dark:border-darkborder">
                     <button @click="startNewChat"
@@ -520,63 +566,84 @@
 
             <!-- 右侧内容区域 -->
             <div class="flex-1 flex flex-col bg-white dark:bg-darkbg relative overflow-hidden w-full">
-                <!-- 移动端菜单按钮 -->
+
+                <!-- 移动端菜单按钮 (全局常驻，任何模式下都需要) -->
                 <div class="absolute top-4 left-4 z-30 md:hidden" v-if="!showSidebar">
                     <button @click="showSidebar = !showSidebar"
-                        class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white">
+                        class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white p-2 rounded-lg bg-white/50 dark:bg-black/20 backdrop-blur-sm">
                         <i class="fas fa-bars fa-lg"></i>
                     </button>
                 </div>
 
-                <!-- 场景 1: 欢迎页 -->
-                <div v-if="isNewChatMode" class="flex-1 flex flex-col items-center justify-center p-4">
-                    <div class="w-full max-w-2xl flex flex-col items-center animate-fade-in-up">
-                        <div class="mb-8 text-center">
-                            <div class="text-4xl font-bold text-gray-800 dark:text-white mb-2">AI Hub Pro</div>
-                            <div class="text-gray-400 text-sm flex items-center justify-center gap-2">
-                                <img :src="getModelAvatar(settings.model)"
-                                    class="w-5 h-5 rounded-full bg-white dark:bg-gray-700 p-0.5">
+                <!-- ================================================== -->
+                <!-- 场景 1: 欢迎页 (New Chat Mode) -->
+                <!-- ================================================== -->
+                <div v-if="isNewChatMode"
+                    class="flex-1 flex flex-col items-center justify-center p-4 relative w-full h-full">
+
+                    <!-- [修正] 右上角悬浮点数 (仅在付费模式显示) -->
+                    <div v-if="paidMode" class="absolute top-4 right-4 z-20">
+                        <div @click="showTopUpModal = true"
+                            class="cursor-pointer group flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded-full border border-yellow-200 dark:border-yellow-700/50 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition shadow-sm">
+                            <i class="fas fa-coins text-yellow-500 animate-pulse"></i>
+                            <span class="text-sm font-bold text-yellow-700 dark:text-yellow-400">[[ userPoints ]]</span>
+                            <i
+                                class="fas fa-plus-circle text-xs text-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                    </div>
+
+                    <div class="w-full max-w-2xl flex flex-col items-center animate-fade-in-up z-10">
+                        <!-- Logo 与 标题 -->
+                        <div class="mb-10 text-center">
+                            <div
+                                class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 mb-4 tracking-tight">
+                                AI Hub Pro
+                            </div>
+                            <!-- 当前模型指示器 -->
+                            <div
+                                class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 dark:bg-darkinput border border-gray-200 dark:border-darkborder text-sm text-gray-600 dark:text-gray-300">
+                                <img :src="getModelAvatar(settings.model)" class="w-4 h-4 rounded-full">
                                 <span>当前模型: [[ settings.model ]]</span>
                             </div>
                         </div>
 
-                        <!-- 快捷输入框 -->
+                        <!-- 居中大输入框 -->
                         <div
-                            class="w-full relative shadow-lg rounded-2xl border border-gray-200 dark:border-darkborder bg-white dark:bg-darkinput focus-within:ring-2 focus-within:ring-blue-500 transition-all">
+                            class="w-full relative shadow-2xl shadow-blue-900/10 dark:shadow-none rounded-2xl border border-gray-200 dark:border-darkborder bg-white dark:bg-darkinput focus-within:ring-2 focus-within:ring-blue-500 transition-all overflow-hidden">
                             <textarea v-model="inputMessage" @keydown.enter.prevent="!isThinking ? sendMessage() : null"
-                                class="w-full py-4 pl-5 pr-12 rounded-2xl outline-none resize-none text-gray-700 dark:text-gray-200 placeholder-gray-400 min-h-[60px] max-h-[200px] overflow-hidden bg-transparent"
-                                placeholder="给 AI 发送消息 (支持粘贴图片/上传文档)..." rows="1"></textarea>
+                                class="w-full py-5 pl-6 pr-14 rounded-2xl outline-none resize-none text-gray-700 dark:text-gray-200 placeholder-gray-400 min-h-[80px] max-h-[200px] overflow-hidden bg-transparent text-lg"
+                                placeholder="有什么我可以帮你的吗？" rows="1"></textarea>
 
-                            <div class="flex justify-between items-center px-4 pb-3">
+                            <div class="flex justify-between items-center px-4 pb-3 bg-gray-50/50 dark:bg-black/10">
                                 <button @click="triggerFileUpload"
-                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-lg relative">
-                                    <i class="fas fa-paperclip"></i>
+                                    class="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 p-2 rounded-lg transition">
+                                    <i class="fas fa-paperclip text-lg"></i>
                                 </button>
                                 <button @click="sendMessage" :disabled="!inputMessage && attachedFiles.length===0"
-                                    class="w-8 h-8 rounded-full flex items-center justify-center transition"
-                                    :class="(inputMessage || attachedFiles.length>0) ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'">
+                                    class="w-10 h-10 rounded-xl flex items-center justify-center transition shadow-lg"
+                                    :class="(inputMessage || attachedFiles.length>0) ? 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'">
                                     <i class="fas fa-arrow-up"></i>
                                 </button>
                             </div>
 
                             <!-- 文件预览 -->
-                            <div v-if="attachedFiles.length > 0" class="px-4 pb-2 flex gap-2 overflow-x-auto">
+                            <div v-if="attachedFiles.length > 0"
+                                class="px-4 pb-2 flex gap-2 overflow-x-auto bg-gray-50 dark:bg-black/20">
                                 <div v-for="(file, idx) in attachedFiles" :key="idx" class="relative group">
                                     <img v-if="file.type==='image'" :src="file.content"
-                                        class="h-12 w-12 rounded object-cover border dark:border-gray-600">
+                                        class="h-10 w-10 rounded object-cover border dark:border-gray-600">
                                     <div v-else
-                                        class="h-12 w-12 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded border dark:border-gray-600 text-gray-500 dark:text-gray-300">
-                                        <i class="fas fa-file-alt"></i>
+                                        class="h-10 w-10 flex items-center justify-center bg-white dark:bg-gray-700 rounded border dark:border-gray-600 text-gray-500">
+                                        <i class="fas fa-file"></i>
                                     </div>
                                     <button @click="removeFile(idx)"
-                                        class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition">&times;</button>
+                                        class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100">&times;</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 【修改】替换原有的硬编码按钮区域 -->
-                        <div class="mt-8 w-full px-2">
-                            <!-- 标题栏：显示“试一试”和“换一批”按钮 -->
+                        <!-- 底部推荐 (移动端隐藏，保持极简) -->
+                        <div class="mt-8 w-full px-2 hidden md:block opacity-80 hover:opacity-100 transition-opacity">
                             <div class="flex justify-between items-center mb-3 px-1">
                                 <span class="text-xs font-medium text-gray-400 uppercase tracking-wider">试一试</span>
                                 <button @click="refreshRandomPrompts"
@@ -584,59 +651,64 @@
                                     <i class="fas fa-sync-alt"></i> 换一批
                                 </button>
                             </div>
-
-                            <!-- 随机卡片网格 -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <button v-for="(item, index) in randomPrompts" :key="index"
                                     @click="inputMessage=item.content; sendMessage()"
-                                    class="text-left p-3 rounded-xl border border-gray-200 dark:border-darkborder bg-white dark:bg-darkinput hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-md transition group h-full flex flex-col">
+                                    class="text-left p-3 rounded-xl border border-gray-200 dark:border-darkborder bg-white dark:bg-darkinput hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-md transition h-full flex flex-col">
                                     <div
                                         class="font-bold text-gray-700 dark:text-gray-200 text-sm mb-1 flex items-center gap-2">
                                         <span>[[ item.icon ]]</span> [[ item.title ]]
                                     </div>
-                                    <div
-                                        class="text-xs text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 line-clamp-2 leading-relaxed">
-                                        [[ item.content ]]
-                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">[[ item.content
+                                        ]]</div>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 场景 2: 聊天列表模式 -->
-                <div v-else class="flex-1 flex flex-col h-full">
-                    <!-- 顶部栏 -->
-                    <div
-                        class="h-14 border-b dark:border-darkborder flex items-center px-4 justify-between bg-white/80 dark:bg-darkbg/90 backdrop-blur z-10">
-                        <div class="flex items-center text-gray-700 dark:text-white font-medium">
+                <!-- ================================================== -->
+                <!-- 场景 2: 聊天模式 (Active Chat Mode) -->
+                <!-- ================================================== -->
+                <div v-else class="flex-1 flex flex-col h-full w-full">
+                    <!-- 顶部栏 (只在聊天模式显示) -->
+                    <div class="h-14 border-b dark:border-darkborder flex items-center justify-between bg-white/80 dark:bg-darkbg/90 backdrop-blur z-10 transition-all"
+                        :class="!showSidebar ? 'pl-14 pr-4' : 'px-4'">
+
+                        <div class="flex items-center text-gray-700 dark:text-white font-medium truncate max-w-[50%]">
                             <span>[[ currentSessionTitle ]]</span>
                         </div>
-                        <div class="text-xs text-gray-400 flex items-center gap-2">
-                            <img :src="getModelAvatar(settings.model)"
-                                class="w-4 h-4 rounded-full bg-gray-100 dark:bg-gray-700 p-0.5">
-                            [[ settings.model ]]
+
+                        <!-- 右侧区域 (点数与模型) -->
+                        <div class="flex items-center gap-3">
+                            <div v-if="paidMode" @click="showTopUpModal = true"
+                                class="cursor-pointer group flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded-full border border-yellow-200 dark:border-yellow-700/50 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">
+                                <i class="fas fa-coins text-yellow-500"></i>
+                                <span class="text-sm font-bold text-yellow-700 dark:text-yellow-400">[[ userPoints
+                                    ]]</span>
+                            </div>
+                            <div class="text-xs text-gray-400 flex items-center gap-2 hidden md:flex">
+                                <img :src="getModelAvatar(settings.model)"
+                                    class="w-4 h-4 rounded-full bg-gray-100 dark:bg-gray-700 p-0.5">
+                                [[ settings.model ]]
+                            </div>
                         </div>
                     </div>
 
                     <!-- 消息滚动区 -->
                     <div class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth" id="chat-container"
                         @scroll="handleScroll">
-                        <!-- 消息循环体 -->
                         <div v-for="(msg, index) in messages" :key="index"
                             class="flex flex-col w-full animate-fade-in max-w-4xl mx-auto group mb-6"
                             :class="msg.role === 'user' ? 'items-end' : 'items-start'">
 
-                            <!-- 1. 发送者名字 (保持不变) -->
                             <div class="text-xs text-gray-400 mb-1 px-1 select-none">
                                 [[ msg.role === 'user' ? authForm.username : (msg.model || 'AI') ]]
                             </div>
 
-                            <!-- 2. 消息主体区域 (头像 + 气泡) -->
                             <div class="flex w-full max-w-[95%] md:max-w-[85%]"
                                 :class="msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'">
-
-                                <!-- 头像 (保持不变) -->
+                                <!-- 头像 -->
                                 <div
                                     class="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center border border-gray-100 dark:border-gray-700 bg-white dark:bg-darkinput shadow-sm mx-2 p-1">
                                     <template v-if="msg.role === 'user'">
@@ -652,67 +724,42 @@
                                     </template>
                                 </div>
 
-                                <!-- 气泡内容 (保持不变，只是去掉了 min-w-[120px] 修复了之前的 bug) -->
+                                <!-- 气泡 -->
                                 <div class="text-sm md:text-base leading-relaxed overflow-hidden pt-1 min-w-[60px]">
-                                    <!-- 用户气泡 -->
                                     <div v-if="msg.role === 'user'"
                                         class="bg-blue-600 text-white px-4 py-2.5 rounded-2xl rounded-tr-sm whitespace-pre-wrap shadow-sm inline-block text-left">
-                                        <!-- 文件展示 -->
                                         <div v-if="msg.files && msg.files.length > 0" class="flex flex-col gap-2 mb-2">
                                             <div v-for="(f, fIdx) in msg.files" :key="fIdx">
                                                 <img v-if="f.type==='image'" :src="f.content"
                                                     class="chat-image-preview border-white/20">
                                                 <div v-else
-                                                    class="flex items-center gap-2 bg-white/20 p-2 rounded text-sm">
-                                                    <i class="fas fa-file-alt"></i> <span class="truncate">[[ f.name
-                                                        ]]</span>
-                                                </div>
+                                                    class="flex items-center gap-2 bg-white/20 p-2 rounded text-sm"><i
+                                                        class="fas fa-file-alt"></i> <span class="truncate">[[ f.name
+                                                        ]]</span></div>
                                             </div>
                                         </div>
                                         [[ msg.content ]]
                                     </div>
-
-                                    <!-- AI 气泡 -->
                                     <div v-else
-                                        class="markdown-body dark:markdown-dark text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-darkinput px-4 py-2.5 rounded-2xl rounded-tl-sm border border-gray-100 dark:border-darkborder shadow-sm inline-block"
+                                        class="markdown-body dark:markdown-dark text-gray-800 dark:text-gray-200 bg-white dark:bg-darkinput px-4 py-2.5 rounded-2xl rounded-tl-sm border border-gray-200 dark:border-darkborder shadow-sm inline-block"
                                         v-html="renderContent(msg.content)"></div>
                                 </div>
                             </div>
 
-                            <!-- 3. [新增] 底部操作栏 -->
-                            <!-- opacity-0 group-hover:opacity-100 实现鼠标悬停显示 -->
-                            <div class="flex items-center gap-3 mt-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                            <!-- 底部操作栏 -->
+                            <div class="flex items-center gap-3 mt-1 text-xs text-gray-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
                                 :class="msg.role === 'user' ? 'justify-end pr-14' : 'justify-start pl-14'">
-
-                                <!-- 复制按钮 -->
-                                <button @click="copyMessage(msg.content)" title="复制内容"
-                                    class="hover:text-blue-500 transition flex items-center gap-1">
-                                    <i class="fas fa-copy"></i> 复制
-                                </button>
-
-                                <!-- 编辑按钮 -->
-                                <button @click="editMessage(index)" title="编辑内容"
-                                    class="hover:text-green-500 transition flex items-center gap-1">
-                                    <i class="fas fa-pen"></i> 编辑
-                                </button>
-
-                                <!-- 删除按钮 -->
-                                <button @click="deleteMessage(index)" title="删除消息"
-                                    class="hover:text-red-500 transition flex items-center gap-1">
-                                    <i class="fas fa-trash"></i> 删除
-                                </button>
-
-                                <!-- (可选) AI 消息如果是最后一条，显示重新生成 -->
+                                <button @click="copyMessage(msg.content)" class="hover:text-blue-500 transition"><i
+                                        class="fas fa-copy"></i></button>
+                                <button @click="deleteMessage(index)" class="hover:text-red-500 transition"><i
+                                        class="fas fa-trash"></i></button>
                                 <button v-if="msg.role !== 'user' && index === messages.length - 1 && !isThinking"
-                                    @click="regenerateResponse(index)" title="重新生成"
-                                    class="hover:text-purple-500 transition flex items-center gap-1">
-                                    <i class="fas fa-sync-alt"></i> 重试
-                                </button>
+                                    @click="regenerateResponse(index)" class="hover:text-purple-500 transition"><i
+                                        class="fas fa-sync-alt"></i></button>
                             </div>
-
                         </div>
 
-                        <!-- Thinking 状态 -->
+                        <!-- 思考中状态 -->
                         <div v-if="isThinking" class="max-w-4xl mx-auto flex flex-col items-start animate-pulse">
                             <div class="flex items-center gap-2">
                                 <div
@@ -724,43 +771,22 @@
                         </div>
                     </div>
 
-                    <!-- 底部输入框 -->
-                    <div class="p-4 bg-white dark:bg-darkbg">
+                    <!-- 底部输入框 (聊天模式) -->
+                    <div class="p-4 bg-white dark:bg-darkbg border-t dark:border-darkborder">
                         <div
                             class="max-w-3xl mx-auto relative border border-gray-300 dark:border-darkborder rounded-2xl bg-gray-50 dark:bg-darkinput focus-within:ring-2 focus-within:ring-blue-500 transition-all">
 
-                            <!-- 输入框内的文件预览栏 -->
                             <div v-if="attachedFiles.length > 0" class="px-3 pt-2 flex gap-2 overflow-x-auto pb-1">
                                 <div v-for="(file, idx) in attachedFiles" :key="idx"
-                                    class="input-preview-item group flex-shrink-0">
-
-                                    <!-- 图片预览 -->
+                                    class="relative group flex-shrink-0 h-12 w-12 border dark:border-gray-600 rounded overflow-hidden">
                                     <img v-if="file.type==='image'" :src="file.content"
                                         class="h-full w-full object-cover">
-
-                                    <!-- 音频预览 (图标) -->
-                                    <div v-else-if="file.type==='audio'"
-                                        class="px-2 text-xs text-purple-500 flex items-center gap-1">
-                                        <i class="fas fa-music"></i> <span>Audio</span>
-                                    </div>
-
-                                    <!-- 视频预览 (图标) -->
-                                    <div v-else-if="file.type==='video'"
-                                        class="px-2 text-xs text-blue-500 flex items-center gap-1">
-                                        <i class="fas fa-video"></i> <span>Video</span>
-                                    </div>
-
-                                    <!-- 文档预览 -->
                                     <div v-else
-                                        class="px-2 text-xs text-gray-500 dark:text-gray-300 flex items-center gap-1">
-                                        <i class="fas fa-file-alt"></i> <span>Doc</span>
+                                        class="h-full w-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+                                        <i class="fas fa-file"></i>
                                     </div>
-
-                                    <!-- 删除按钮 -->
                                     <button @click="removeFile(idx)"
-                                        class="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 transition flex items-center justify-center font-bold">
-                                        &times;
-                                    </button>
+                                        class="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center">&times;</button>
                                 </div>
                             </div>
 
@@ -770,10 +796,8 @@
                                 placeholder="输入消息..." rows="1"></textarea>
 
                             <div class="absolute bottom-2 right-2 flex space-x-2">
-                                <button @click="triggerFileUpload"
-                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5">
-                                    <i class="fas fa-paperclip"></i>
-                                </button>
+                                <button @click="triggerFileUpload" class="text-gray-400 hover:text-blue-500 p-1.5"><i
+                                        class="fas fa-paperclip"></i></button>
                                 <button @click="sendMessage" :disabled="isThinking || isStreaming"
                                     class="bg-blue-600 text-white rounded-lg w-8 h-8 flex items-center justify-center hover:bg-blue-700 disabled:opacity-50">
                                     <i class="fas" :class="isStreaming ? 'fa-stop' : 'fa-arrow-up'"></i>
@@ -784,13 +808,20 @@
                 </div>
             </div>
         </div>
-
-        <!-- 隐藏的文件输入框 -->
-        <input type="file" id="file-input" multiple @change="handleFileSelect" class="hidden">
     </div>
+
+    <!-- 隐藏的文件输入框 -->
+    <input type="file" id="file-input" multiple @change="handleFileSelect" class="hidden">
+    </div>
+
+    <script>
+        // 使用 safe 过滤器防止 Jinja2 转义引号
+        window.SHARED_MATCH_RULES = {{ rules_json | safe }};
+    </script>
 
     <!-- 模块化脚本引用 -->
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/ui.js"></script>
     <script src="/static/js/api.js"></script>
     <script src="/static/js/app.js"></script>
 

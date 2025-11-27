@@ -23,6 +23,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'change-this-to-a-secure-random-key-in-production' 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# 【新增】付费模式开关
+app.config['PAID_MODE'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -60,12 +62,59 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
-    # 存储 JSON 格式的配置信息
     settings = db.Column(db.Text, default='{}')
+    # 【新增】用户点数，默认为 1000 (新人赠送)
+    points = db.Column(db.Integer, default=1000)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# ================= 价格计算逻辑 =================
+def load_price_config():
+    """读取价格配置"""
+    try:
+        with open('price.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {"default": 100, "prices": []}
+
+def calculate_cost(model_name):
+    """根据模型名称计算价格"""
+    config = load_price_config()
+    name = model_name.lower()
+    
+    # 优先匹配特定关键词
+    for rule in config.get('prices', []):
+        if rule['keyword'] in name:
+            return rule['price']
+            
+    return config.get('default', 100)
+
+@app.route('/api/user_status', methods=['GET'])
+@login_required
+def get_user_status():
+    """【新增】获取用户状态（付费模式开关 + 余额）"""
+    return jsonify({
+        'paid_mode': app.config['PAID_MODE'],
+        'points': current_user.points
+    })
+
+@app.route('/api/add_points', methods=['POST'])
+@login_required
+def add_points():
+    """【新增】模拟充值接口"""
+    if not app.config['PAID_MODE']:
+        return jsonify({'success': False, 'message': '付费模式未开启'})
+        
+    data = request.json
+    amount = int(data.get('amount', 0))
+    
+    if amount > 0:
+        current_user.points += amount
+        db.session.commit()
+        return jsonify({'success': True, 'new_balance': current_user.points})
+    return jsonify({'success': False, 'message': '无效金额'})
 
 # ================= 辅助函数：文档解析 =================
 def extract_text_from_file(file_storage):
@@ -94,15 +143,57 @@ def extract_text_from_file(file_storage):
 
 # ================= 路由逻辑 =================
 
+# 1. 定义一个加载规则的函数
+def load_match_rules():
+    """从 JSON 文件加载匹配规则，供前后端共用"""
+    try:
+        with open('model_rules.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading rules: {e}")
+        return []
+
+# 2. 修改 identify_provider 函数 (价格计算逻辑)
+def identify_provider(model_name):
+    if not model_name: return 'default'
+    lower_name = model_name.lower()
+
+    # === [修改点] 动态读取规则 ===
+    rules = load_match_rules()
+    
+    for rule in rules:
+        for keyword in rule['keywords']:
+            if keyword in lower_name:
+                return rule['id']
+    
+    # ... (原有的兜底逻辑保持不变: split('/') 等) ...
+    # 智能兜底逻辑...
+    if '/' in lower_name:
+        processing_name = lower_name.split('/')[-1]
+    else:
+        processing_name = lower_name
+        
+    import re
+    split_parts = re.split(r'[-_:]', processing_name)
+    if split_parts:
+        return split_parts[0]
+    return 'default'
+
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
         return redirect(url_for('login_page'))
-    return render_template('index.html')
+    
+    # === [修改点] 读取规则并转换为 JSON 字符串传给前端 ===
+    rules_json = json.dumps(load_match_rules())
+    
+    # 注意：这里需要把 rules_json 传给模板
+    return render_template('index.html', rules_json=rules_json)
 
 @app.route('/login')
 def login_page():
-    return render_template('index.html', view='login')
+    # 登录页也传一下，防止报错，虽然登录页用不到
+    return render_template('index.html', view='login', rules_json='[]')
 
 @app.route('/logout')
 @login_required
@@ -405,11 +496,27 @@ def chat():
     messages = data.get('messages', [])
     
     settings = json.loads(current_user.settings)
+    
+    # 获取 API Key
     raw_key = settings.get('api_key')
     api_key = decrypt_val(raw_key)
-    
     if not api_key and raw_key: api_key = raw_key
     if not api_key: return jsonify({'error': 'No API Key Configured'}), 400
+
+    # 获取模型名称
+    model_name = settings.get('model', 'gpt-3.5-turbo')
+
+    # ================= [新增] 付费模式检查逻辑 =================
+    if app.config.get('PAID_MODE', False):
+        cost = calculate_cost(model_name)
+        if current_user.points < cost:
+            # 返回 402 Payment Required 状态码，前端会据此弹出充值框
+            return jsonify({'error': f'点数不足！当前模型需要 {cost} 点，您仅有 {current_user.points} 点。请充值。'}), 402
+        
+        # 扣除点数并立即保存
+        current_user.points -= cost
+        db.session.commit()
+    # ========================================================
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -427,20 +534,26 @@ def chat():
     # 2. 构建动态 Payload
     payload = build_dynamic_payload(
         request_template, 
-        settings.get('model', 'gpt-3.5-turbo'), 
+        model_name, 
         messages, 
         settings.get('system_prompt', '')
     )
 
-    url = f"{settings.get('api_endpoint', '').rstrip('/')}/chat/completions"
-    
-    # 注意：如果用户自定义了 Endpoint 的完整路径（不仅是 host），这里需要处理
-    # 简单的做法：如果 Endpoint 以 http 开头且包含 /chat/completions 等后缀，就不拼接
-    # 这里为了兼容性，假设用户填写的只是 Base URL
+    # ================= [优化] URL 构建逻辑 =================
+    raw_endpoint = settings.get('api_endpoint', '').strip()
+    clean_endpoint = raw_endpoint.rstrip('/')
+
+    # 智能判断：如果不以 /chat/completions 结尾，则自动拼接
+    # 这样既兼容了只填 host 的用户，也兼容了填完整路径的用户
+    if clean_endpoint.endswith('/chat/completions'):
+        url = clean_endpoint
+    else:
+        url = f"{clean_endpoint}/chat/completions"
+    # ======================================================
 
     def generate():
         try:
-            # 增加超时时间
+            # 增加超时时间到 120秒
             with httpx.Client(timeout=120.0) as client:
                 with client.stream("POST", url, json=payload, headers=headers) as response:
                     

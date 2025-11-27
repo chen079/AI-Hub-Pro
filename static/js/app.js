@@ -49,6 +49,16 @@ createApp({
             currentSessionId: null,
             messages: [],
 
+            // 【新增】付费模式相关
+            paidMode: false,
+            userPoints: 0,
+            showTopUpModal: false, // 控制充值弹窗
+            topUpOptions: [
+                { points: 1000, price: '¥ 9.9', label: '尝鲜包' },
+                { points: 5000, price: '¥ 39.9', label: '超值包' },
+                { points: 20000, price: '¥ 99.0', label: '豪华包' }
+            ],
+
             // --- 输入区域 ---
             inputMessage: '',
             attachedFiles: [],
@@ -138,9 +148,39 @@ createApp({
                     this.isLoggedIn = true;
                     this.applySettings(settings);
                     if (this.authForm.username) await this.loadSessions();
+
+                    // 获取付费状态和余额
+                    this.fetchUserStatus();
                 }
             } catch (e) {
                 console.log("Not logged in");
+            }
+        },
+
+        // 【新增】获取用户状态
+        async fetchUserStatus() {
+            try {
+                const res = await AppAPI.request('/api/user_status');
+                this.paidMode = res.paid_mode;
+                this.userPoints = res.points;
+            } catch (e) { console.error(e); }
+        },
+
+        // 【新增】模拟充值
+        async handleTopUp(amount) {
+            // 使用自定义 Confirm
+            const confirmed = await AppUI.confirm('确认支付', `确认充值 ${amount} 点数吗？(模拟支付)`);
+            if (!confirmed) return;
+
+            try {
+                const res = await AppAPI.request('/api/add_points', 'POST', { amount });
+                if (res.success) {
+                    this.userPoints = res.new_balance;
+                    AppUI.toast(`充值成功！当前余额 ${res.new_balance}`, 'success');
+                    this.showTopUpModal = false;
+                }
+            } catch (e) {
+                AppUI.toast("充值失败，请稍后重试", 'error');
             }
         },
 
@@ -157,7 +197,7 @@ createApp({
                     if (this.isRegistering) {
                         this.isRegistering = false;
                         this.authForm.password = '';
-                        alert('注册成功，请登录');
+                        AppUI.toast('注册成功，请登录', 'success');
                     } else {
                         this.isLoggedIn = true;
                         this.authError = '';
@@ -192,18 +232,19 @@ createApp({
         async copyMessage(text) {
             try {
                 await navigator.clipboard.writeText(text);
-                // 这里可以做一个简易的 Toast 提示，或者简单弹个窗，或者利用按钮变色
-                // 为了简单起见，我们暂时只在控制台输出，或者你可以 alert('已复制')
+                AppUI.toast('已复制', 'success')
                 console.log('Copied');
             } catch (err) {
                 console.error('复制失败:', err);
-                alert('复制失败，请手动复制');
+                AppUI.toast('复制失败，请手动复制', 'error');
             }
         },
 
         // [新增] 2. 删除单条消息
         async deleteMessage(index) {
-            if (!confirm('确定删除这条消息吗？')) return;
+            // 使用自定义 Confirm
+            const confirmed = await AppUI.confirm('确定删除这条消息吗？');
+            if (!confirmed) return;
 
             this.messages.splice(index, 1);
             await this.saveCurrentSessionData();
@@ -278,14 +319,14 @@ createApp({
         // [新增] 处理测试连接
         async handleTestConnection() {
             if (!this.settings.api_endpoint) {
-                alert("请先输入 API Endpoint");
+                AppUI.toast("请先输入 API Endpoint", 'error');
                 return;
             }
 
             // 允许 Key 为空（如果是为了测试已保存的 Key）
             // 但如果两个都为空肯定不行
             if (!this.settings.api_endpoint) {
-                alert("请输入配置信息"); return;
+                AppUI.toast("请输入配置信息", 'error'); return;
             }
 
             this.isTestingConnection = true;
@@ -297,14 +338,14 @@ createApp({
                 );
 
                 if (res.success) {
-                    alert("✅ " + res.message);
+                    AppUI.toast("✅ " + res.message, 'success');
                     // 如果测试成功，自动刷新一下模型列表，方便用户选择
                     this.fetchModels();
                 } else {
-                    alert("❌ " + res.message);
+                    AppUI.toast("❌ " + res.message, 'error');
                 }
             } catch (e) {
-                alert("❌ 请求发送失败，请检查网络连接");
+                AppUI.toast("❌ 请求发送失败，请检查网络连接", 'error');
                 console.error(e);
             } finally {
                 this.isTestingConnection = false;
@@ -369,7 +410,10 @@ createApp({
         },
 
         async deleteSession(id) {
-            if (!confirm('确定删除?')) return;
+            const isConfirmed = await AppUI.confirm('删除对话', '确定要删除这条对话记录吗？此操作无法撤销。');
+            if (!isConfirmed) return;
+            await AppDB.deleteSession(id);
+            AppUI.toast('删除成功', 'success');
             await AppDB.deleteSession(id);
             this.sessions = this.sessions.filter(s => s.id !== id);
             if (this.currentSessionId === id) this.startNewChat();
@@ -422,14 +466,16 @@ createApp({
                 if (thinkingModel) {
                     this.settings.model = thinkingModel;
                 } else {
-                    alert("列表里没找到思考模型 (如 reasoner, o1)。请先在设置中刷新。");
+                    AppUI.toast("列表里没找到思考模型 (如 reasoner, o1)。请先在设置中刷新。", 'error');
                 }
             }
             this.saveSettings();
         },
 
-        resetApiSettings() {
-            if (!confirm("确定要清空自定义配置并恢复默认吗？")) return;
+        async resetApiSettings() {
+            // 使用自定义 Confirm
+            const confirmed = await AppUI.confirm('确定要清空自定义配置并恢复默认吗？');
+            if (!confirmed) return;
             this.settings.custom_request_template = ''; // 空代表使用后端默认
             this.settings.custom_response_path = '';    // 空代表使用后端默认
         },
@@ -441,14 +487,21 @@ createApp({
         // [新增] 核心：处理 API 请求与流式响应
         async streamResponse() {
             if (this.isThinking) return;
+
+            // ================= [新增] 发送前余额检查 =================
+            if (this.paidMode && this.userPoints <= 0) {
+                AppUI.toast("点数不足，请先充值！", 'error');
+                this.showTopUpModal = true;
+                return;
+            }
+            // ======================================================
+
             this.isThinking = true;
             this.isStreaming = false; // 准备开始流传输
 
             // 1. 构建 API 消息格式 (OpenAI 兼容)
-            // 这里复用了之前修复过的“带图片”的逻辑
             const apiMessages = this.messages.map((msg, index) => {
                 // 判断逻辑：如果是最后一条用户消息，且包含文件，则组装多模态格式
-                // 注意：在重新生成时，最后一条通常是 User 消息
                 const isLastUserMsg = (msg.role === 'user' && index === this.messages.length - 1);
                 const hasFiles = msg.files && msg.files.length > 0;
 
@@ -494,6 +547,13 @@ createApp({
                     this.isThinking = false;
                     this.isStreaming = false;
 
+                    // ================= [新增] 刷新余额 =================
+                    // 对话成功结束后，向后端拉取最新的余额（因为后端已经扣费）
+                    if (this.paidMode) {
+                        this.fetchUserStatus();
+                    }
+                    // =================================================
+
                     // 保存会话
                     if (this.currentSessionId) {
                         const session = this.sessions.find(s => s.id === this.currentSessionId);
@@ -501,16 +561,27 @@ createApp({
                             session.messages = this.messages;
                             await AppDB.saveSession(session);
                         }
-                    } else if (this.messages.length > 0) {
-                        // 极少情况：如果还没创建会话对象（通常 sendMessage 会创建）
-                        // 这里可以补救，暂略
                     }
                     this.smartScrollToBottom();
                 },
                 onError: (err) => {
                     this.isThinking = false;
                     this.isStreaming = false;
-                    this.messages.push({ role: 'assistant', content: `Error: ${err}`, model: 'System' });
+
+                    // ================= [新增] 402 错误处理 =================
+                    // 如果错误信息包含 402 或 "点数不足"，显示提示并打开充值窗
+                    if (err.includes("402") || err.includes("点数不足")) {
+                        this.messages.push({
+                            role: 'assistant',
+                            content: `⚠️ **余额不足提醒**\n\n${err}\n\n请点击右上角或充值按钮补充点数。`,
+                            model: 'System'
+                        });
+                        this.showTopUpModal = true;
+                    } else {
+                        this.messages.push({ role: 'assistant', content: `Error: ${err}`, model: 'System' });
+                    }
+                    // ======================================================
+
                     this.smartScrollToBottom();
                 }
             });
@@ -669,7 +740,7 @@ createApp({
             for (let file of files) {
                 // 1. 简单的文件大小限制 (例如 20MB)，防止浏览器崩溃
                 if (file.size > 20 * 1024 * 1024) {
-                    alert(`文件 ${file.name} 太大，请上传 20MB 以内的文件`);
+                    AppUI.toast(`文件 ${file.name} 太大，请上传 20MB 以内的文件`, 'error');
                     continue;
                 }
 

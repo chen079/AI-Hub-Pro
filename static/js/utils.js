@@ -8,46 +8,7 @@ const IconLibrary = {
     basePath: '/static/images/',
 
     // 1. 规则配置 (优先级从上到下)
-    matchRules: [
-        // --- 核心文本模型 ---
-        { id: 'openai', keywords: ['gpt', 'o1-', 'openai', 'text-embedding', 'whisper', 'tts', 'dall-e'] },
-        { id: 'claude', keywords: ['claude', 'anthropic'] },
-        { id: 'google', keywords: ['gemini', 'palm', 'google', 'bard', 'imagen', 'veo'] },
-
-        // --- 视频生成 (Video) ---
-        { id: 'luma', keywords: ['luma', 'dream-machine'] },
-        { id: 'runway', keywords: ['runway', 'gen-2', 'gen-3', 'act-one'] },
-        { id: 'kling', keywords: ['kling', 'kuaishou', 'kolors'] }, // 快手可灵
-        { id: 'hailuo', keywords: ['hailuo', 'minimax', 'video-01'] }, // 海螺/MiniMax
-        { id: 'pika', keywords: ['pika'] },
-        { id: 'vidu', keywords: ['vidu'] },
-        { id: 'sora', keywords: ['sora'] },
-        { id: 'wanx', keywords: ['wan2', 'wanx', 'wan-', 'alibaba'] }, // 阿里万相
-        { id: 'cogvideo', keywords: ['cogvideo', 'zhipu', 'glm'] }, // 智谱
-        { id: 'pixverse', keywords: ['pixverse'] },
-        { id: 'higgsfield', keywords: ['higgsfield'] },
-
-        // --- 绘图与设计 (Image/Design) ---
-        { id: 'midjourney', keywords: ['midjourney', 'mj', 'niji'] },
-        { id: 'stability', keywords: ['stable', 'sdxl', 'sd3', 'dreamstudio', 'core'] },
-        { id: 'flux', keywords: ['flux', 'bfl'] }, // Black Forest Labs
-        { id: 'ideogram', keywords: ['ideogram'] },
-        { id: 'recraft', keywords: ['recraft'] },
-        { id: 'jimeng', keywords: ['jimeng', 'doubao', 'volc'] }, // 即梦/豆包
-
-        // --- 音乐与音频 (Audio) ---
-        { id: 'suno', keywords: ['suno', 'chirp'] },
-        { id: 'udio', keywords: ['udio'] },
-
-        // --- 开源/其他 ---
-        { id: 'deepseek', keywords: ['deepseek'] },
-        { id: 'meta', keywords: ['llama', 'meta', 'facebook'] },
-        { id: 'mistral', keywords: ['mistral', 'mixtral', 'codestral'] },
-        { id: 'qwen', keywords: ['qwen', 'tongyi'] },
-        { id: 'grok', keywords: ['grok', 'xai'] },
-        { id: 'yi', keywords: ['yi-', '01.ai'] },
-        { id: 'kimi', keywords: ['kimi'] },
-    ],
+    matchRules: window.SHARED_MATCH_RULES || [],
 
     specialExtensions: {
         'exampleid': '.png', // 如果有特殊后缀可以在这里定义
