@@ -4,14 +4,52 @@
  * 图标库逻辑 (完整增强版)
  * 根据模型名称自动匹配对应的厂商图标
  */
+const FALLBACK_RULES = [
+    { id: 'openai', keywords: ['gpt', 'o1-', 'openai', 'text-embedding', 'whisper', 'tts', 'dall-e'] },
+    { id: 'claude', keywords: ['claude', 'anthropic'] },
+    { id: 'google', keywords: ['gemini', 'palm', 'google', 'bard', 'imagen', 'veo'] },
+    { "id": "deepseek", "keywords": ["deepseek"] },
+    { "id": "midjourney", "keywords": ["midjourney", "mj", "niji"] },
+    { "id": "stability", "keywords": ["stable", "sdxl", "sd3", "dreamstudio", "core"] },
+    { "id": "suno", "keywords": ["suno", "chirp"] },
+    { "id": "luma", "keywords": ["luma", "dream-machine"] },
+    { "id": "runway", "keywords": ["runway", "gen-2", "gen-3", "act-one"] },
+    { "id": "kling", "keywords": ["kling", "kuaishou", "kolors"] },
+    { "id": "hailuo", "keywords": ["hailuo", "minimax", "video-01"] },
+    { "id": "pika", "keywords": ["pika"] },
+    { "id": "vidu", "keywords": ["vidu"] },
+    { "id": "sora", "keywords": ["sora"] },
+    { "id": "wanx", "keywords": ["wan2", "wanx", "wan-", "alibaba"] },
+    { "id": "cogvideo", "keywords": ["cogvideo", "zhipu", "glm"] },
+    { "id": "pixverse", "keywords": ["pixverse"] },
+    { "id": "higgsfield", "keywords": ["higgsfield"] },
+    { "id": "ideogram", "keywords": ["ideogram"] },
+    { "id": "recraft", "keywords": ["recraft"] },
+    { "id": "jimeng", "keywords": ["jimeng", "doubao", "volc"] },
+    { "id": "udio", "keywords": ["udio"] },
+    { "id": "meta", "keywords": ["llama", "meta", "facebook"] },
+    { "id": "mistral", "keywords": ["mistral", "mixtral", "codestral"] },
+    { "id": "qwen", "keywords": ["qwen", "tongyi"] },
+    { "id": "grok", "keywords": ["grok", "xai"] },
+    { "id": "yi", "keywords": ["yi-", "01.ai"] },
+    { "id": "kimi", "keywords": ["kimi"] }
+];
+
+/**
+ * 图标库逻辑 (完整增强版)
+ */
 const IconLibrary = {
     basePath: '/static/images/',
 
-    // 1. 规则配置 (优先级从上到下)
-    matchRules: window.SHARED_MATCH_RULES || [],
+    // 【核心修复】
+    // 优先使用后端传来的规则；如果后端没传(空或undefined)，则使用本地兜底规则
+    // 这样能保证 GPT 永远被识别为 openai
+    matchRules: (window.SHARED_MATCH_RULES && window.SHARED_MATCH_RULES.length > 0) 
+                ? window.SHARED_MATCH_RULES 
+                : FALLBACK_RULES,
 
     specialExtensions: {
-        'exampleid': '.png', // 如果有特殊后缀可以在这里定义
+        'exampleid': '.png', 
     },
 
     /**
@@ -21,14 +59,15 @@ const IconLibrary = {
         if (!modelName) return 'default';
         const lower = modelName.toLowerCase();
 
-        // 规则优先匹配
+        // 1. 规则优先匹配
+        // 因为有了 FALLBACK_RULES，这里一定会匹配到 'gpt' -> 'openai'
         for (const rule of this.matchRules) {
             if (rule.keywords.some(keyword => lower.includes(keyword))) {
                 return rule.id;
             }
         }
 
-        // 智能兜底：尝试取 '/' 后面的部分或 '-' 前面的部分
+        // 2. 智能兜底 (如果规则没匹配到，才走这里)
         let processingName = lower;
         if (lower.includes('/')) {
             const parts = lower.split('/');

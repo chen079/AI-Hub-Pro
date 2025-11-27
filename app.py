@@ -71,11 +71,17 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # ================= 价格计算逻辑 =================
+PRICE_CONFIG_CACHE = None
+
 def load_price_config():
-    """读取价格配置"""
+    """读取价格配置 (带简单缓存)"""
+    global PRICE_CONFIG_CACHE
+    if PRICE_CONFIG_CACHE:
+        return PRICE_CONFIG_CACHE
     try:
         with open('price.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
+            PRICE_CONFIG_CACHE = json.load(f)
+            return PRICE_CONFIG_CACHE
     except:
         return {"default": 100, "prices": []}
 

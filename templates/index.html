@@ -78,6 +78,75 @@
             </div>
         </div>
 
+        <!-- ==================== [新增] 系统提示词模态框 ==================== -->
+        <div v-if="showSystemPromptModal" class="settings-modal-overlay" style="z-index: 260;"
+            @click.self="showSystemPromptModal = false">
+            <div
+                class="settings-modal flex flex-col animate-fade-in-up bg-white dark:bg-darkcard dark:text-gray-200 w-[90%] max-w-lg overflow-hidden">
+
+                <!-- 头部 -->
+                <div
+                    class="p-5 border-b dark:border-darkborder flex justify-between items-center bg-gray-50 dark:bg-darkinput">
+                    <div>
+                        <h3 class="font-bold text-gray-800 dark:text-white text-lg flex items-center">
+                            <i class="fas fa-user-cog mr-2 text-purple-500"></i>系统提示词
+                        </h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">设定 AI 的身份、语气或行为准则</p>
+                    </div>
+                    <button @click="showSystemPromptModal = false"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- 内容 -->
+                <div class="p-6 space-y-4">
+                    <!-- 预设快捷按钮 (可选) -->
+                    <div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                        <button @click="settings.system_prompt = 'You are a helpful assistant.'"
+                            class="px-3 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
+                            默认助手
+                        </button>
+                        <button @click="settings.system_prompt = '你是一个精通 Python 和 Vue 的全栈工程师，回答要专业且代码要写注释。'"
+                            class="px-3 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
+                            全栈专家
+                        </button>
+                        <button @click="settings.system_prompt = '你是一个资深翻译，请将我输入的内容翻译成优雅的中文。'"
+                            class="px-3 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
+                            翻译官
+                        </button>
+                        <button @click="settings.system_prompt = '请用苏格拉底式的教学方法，通过提问引导我思考，而不是直接给出答案。'"
+                            class="px-3 py-1 text-xs rounded-full border border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap">
+                            苏格拉底
+                        </button>
+                    </div>
+
+                    <!-- 输入框 -->
+                    <div class="relative">
+                        <textarea v-model="settings.system_prompt" rows="8"
+                            class="w-full p-4 rounded-xl border border-gray-200 dark:border-darkborder bg-gray-50 dark:bg-darkinput focus:ring-2 focus:ring-purple-500 outline-none text-sm leading-relaxed dark:text-gray-200 resize-none"
+                            placeholder="例如：你是一个有用的助手..."></textarea>
+
+                        <!-- 清空按钮 -->
+                        <button v-if="settings.system_prompt" @click="settings.system_prompt = ''"
+                            class="absolute bottom-3 right-3 text-xs text-gray-400 hover:text-red-500 transition">
+                            清空
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 底部 -->
+                <div class="p-5 border-t dark:border-darkborder bg-gray-50 dark:bg-darkinput flex justify-end">
+                    <button @click="showSystemPromptModal = false"
+                        class="mr-3 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">取消</button>
+                    <button @click="saveSystemPrompt"
+                        class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-sm transition transform active:scale-95">
+                        保存设定
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- ==================== 设置模态框 ==================== -->
         <div v-if="showSettings" class="settings-modal-overlay" @click.self="toggleSettings">
             <div class="settings-modal flex flex-col animate-fade-in-up bg-white dark:bg-darkcard dark:text-gray-200">
@@ -567,10 +636,10 @@
             <!-- 右侧内容区域 -->
             <div class="flex-1 flex flex-col bg-white dark:bg-darkbg relative overflow-hidden w-full">
 
-                <!-- 移动端菜单按钮 (全局常驻，任何模式下都需要) -->
-                <div class="absolute top-4 left-4 z-30 md:hidden" v-if="!showSidebar">
+                <!-- 修改为 (增加 text-gray-600 并确保 z-index 够高) -->
+                <div class="absolute top-4 left-4 z-[40] md:hidden" v-if="!showSidebar">
                     <button @click="showSidebar = !showSidebar"
-                        class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white p-2 rounded-lg bg-white/50 dark:bg-black/20 backdrop-blur-sm">
+                        class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white p-2 rounded-lg bg-white/80 dark:bg-black/40 backdrop-blur-md shadow-sm border border-gray-200 dark:border-gray-700">
                         <i class="fas fa-bars fa-lg"></i>
                     </button>
                 </div>
@@ -600,10 +669,21 @@
                                 AI Hub Pro
                             </div>
                             <!-- 当前模型指示器 -->
-                            <div
-                                class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 dark:bg-darkinput border border-gray-200 dark:border-darkborder text-sm text-gray-600 dark:text-gray-300">
-                                <img :src="getModelAvatar(settings.model)" class="w-4 h-4 rounded-full">
-                                <span>当前模型: [[ settings.model ]]</span>
+                            <div class="flex items-center gap-3 mt-2">
+                                <!-- 当前模型指示器 -->
+                                <div
+                                    class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 dark:bg-darkinput border border-gray-200 dark:border-darkborder text-sm text-gray-600 dark:text-gray-300">
+                                    <img :src="getModelAvatar(settings.model)" class="w-4 h-4 rounded-full">
+                                    <span>[[ settings.model ]]</span>
+                                </div>
+
+                                <!-- 【新增】系统提示词按钮 -->
+                                <button @click="showSystemPromptModal = true"
+                                    class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-darkinput border border-purple-200 dark:border-purple-900/50 text-purple-600 dark:text-purple-400 text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition shadow-sm"
+                                    title="设置 AI 人设">
+                                    <i class="fas fa-user-cog"></i>
+                                    <span>[[ settings.system_prompt ? '已设人设' : '设定人设' ]]</span>
+                                </button>
                             </div>
                         </div>
 
@@ -679,8 +759,19 @@
                             <span>[[ currentSessionTitle ]]</span>
                         </div>
 
-                        <!-- 右侧区域 (点数与模型) -->
+                        <!-- 【新增】Token 计数器 -->
+                        <div class="hidden md:flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-darkinput rounded-full border border-gray-200 dark:border-darkborder text-xs text-gray-500 dark:text-gray-400"
+                            title="当前会话估算 Token 消耗">
+                            <i class="fas fa-calculator text-gray-400"></i>
+                            <span class="font-mono">[[ totalSessionTokens ]] tkns</span>
+                        </div>
                         <div class="flex items-center gap-3">
+                            <!-- 【新增】系统提示词按钮 -->
+                            <button @click="showSystemPromptModal = true"
+                                class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-darkinput transition hidden md:flex"
+                                title="设置 AI 人设">
+                                <i class="fas fa-user-cog"></i>
+                            </button>
                             <div v-if="paidMode" @click="showTopUpModal = true"
                                 class="cursor-pointer group flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded-full border border-yellow-200 dark:border-yellow-700/50 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">
                                 <i class="fas fa-coins text-yellow-500"></i>
@@ -732,14 +823,34 @@
                                             <div v-for="(f, fIdx) in msg.files" :key="fIdx">
                                                 <img v-if="f.type==='image'" :src="f.content"
                                                     class="chat-image-preview border-white/20">
+                                                <!-- 修改开始 -->
                                                 <div v-else
-                                                    class="flex items-center gap-2 bg-white/20 p-2 rounded text-sm"><i
-                                                        class="fas fa-file-alt"></i> <span class="truncate">[[ f.name
-                                                        ]]</span></div>
+                                                    class="flex items-center gap-2 bg-white/20 p-2 rounded text-sm text-left">
+                                                    <!-- 1. 图标防挤压 -->
+                                                    <i class="fas fa-file-alt flex-shrink-0"></i>
+
+                                                    <!-- 2. 删除 truncate，只保留 break-all -->
+                                                    <span class="break-all leading-snug">[[ f.name ]]</span>
+                                                </div>
                                             </div>
                                         </div>
                                         [[ msg.content ]]
+
+                                        <!-- 【新增】解析内容的折叠面板 -->
+                                        <details v-if="msg.parsed_context"
+                                            class="mt-2 border-t border-white/20 pt-2 text-xs">
+                                            <summary
+                                                class="cursor-pointer font-medium hover:text-blue-100 select-none flex items-center gap-1 opacity-80">
+                                                <i class="fas fa-file-alt"></i>
+                                                <span>已解析文档内容 ([[ msg.parsed_context.length ]] 字符)</span>
+                                            </summary>
+                                            <div
+                                                class="mt-2 p-2 bg-black/10 rounded font-mono break-all whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                                [[ msg.parsed_context ]]
+                                            </div>
+                                        </details>
                                     </div>
+
                                     <div v-else
                                         class="markdown-body dark:markdown-dark text-gray-800 dark:text-gray-200 bg-white dark:bg-darkinput px-4 py-2.5 rounded-2xl rounded-tl-sm border border-gray-200 dark:border-darkborder shadow-sm inline-block"
                                         v-html="renderContent(msg.content)"></div>
@@ -747,15 +858,31 @@
                             </div>
 
                             <!-- 底部操作栏 -->
-                            <div class="flex items-center gap-3 mt-1 text-xs text-gray-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
+                            <div class="flex items-center gap-3 mt-1 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                                 :class="msg.role === 'user' ? 'justify-end pr-14' : 'justify-start pl-14'">
-                                <button @click="copyMessage(msg.content)" class="hover:text-blue-500 transition"><i
-                                        class="fas fa-copy"></i></button>
-                                <button @click="deleteMessage(index)" class="hover:text-red-500 transition"><i
-                                        class="fas fa-trash"></i></button>
+
+                                <!-- 复制按钮 -->
+                                <button @click="copyMessage(msg.content)" class="hover:text-blue-500 transition"
+                                    title="复制">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+
+                                <!-- 编辑按钮 -->
+                                <button @click="editMessage(index)" class="hover:text-blue-500 transition" title="编辑">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+
+                                <!-- 删除按钮 -->
+                                <button @click="deleteMessage(index)" class="hover:text-red-500 transition" title="删除">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+
+                                <!-- 重新生成按钮 -->
                                 <button v-if="msg.role !== 'user' && index === messages.length - 1 && !isThinking"
-                                    @click="regenerateResponse(index)" class="hover:text-purple-500 transition"><i
-                                        class="fas fa-sync-alt"></i></button>
+                                    @click="regenerateResponse(index)" class="hover:text-purple-500 transition"
+                                    title="重新生成">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
                             </div>
                         </div>
 

@@ -82,6 +82,107 @@ const AppUI = {
         return this._createModal(title, content, true);
     },
 
+    /**
+     * 显示输入弹窗 (Input) - 替代 window.prompt
+     * @param {string} title 标题
+     * @param {string} defaultValue 默认值
+     * @param {string} placeholder 占位符
+     * @returns Promise<string|null> (返回输入的字符串，取消则返回 null)
+     */
+    input(title, defaultValue = '', placeholder = '') {
+        return new Promise((resolve) => {
+            // 1. 创建遮罩
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 z-[1000] bg-gray-900/60 backdrop-blur-sm flex items-center justify-center opacity-0 transition-opacity duration-200';
+            
+            // 2. 创建弹窗主体 (比 confirm 稍微宽一点)
+            const modal = document.createElement('div');
+            modal.className = `
+                bg-white dark:bg-darkcard w-[90%] max-w-md rounded-xl shadow-2xl 
+                transform scale-95 opacity-0 transition-all duration-200
+                border border-gray-100 dark:border-darkborder overflow-hidden flex flex-col
+            `;
+
+            // 3. 构建内容
+            modal.innerHTML = `
+                <div class="p-5">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-3 flex items-center">
+                        <i class="fas fa-pen-to-square text-blue-500 mr-2"></i>${title}
+                    </h3>
+                    <div class="relative">
+                        <textarea id="app-modal-input" rows="4" 
+                            class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-darkinput text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-none custom-scrollbar transition-all"
+                            placeholder="${placeholder}">${defaultValue}</textarea>
+                    </div>
+                </div>
+                <div class="flex border-t border-gray-100 dark:border-darkborder bg-gray-50 dark:bg-darkinput/50">
+                    <button id="app-modal-cancel" class="flex-1 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition border-r border-gray-100 dark:border-darkborder">
+                        取消
+                    </button>
+                    <button id="app-modal-confirm" class="flex-1 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
+                        确定
+                    </button>
+                </div>
+            `;
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            const inputEl = modal.querySelector('#app-modal-input');
+
+            // 4. 动画与聚焦
+            requestAnimationFrame(() => {
+                overlay.classList.remove('opacity-0');
+                modal.classList.remove('scale-95', 'opacity-0');
+                modal.classList.add('scale-100');
+                // 自动聚焦并选中文字
+                inputEl.focus();
+                // 稍微延迟一下全选，避免移动端键盘弹出的冲突
+                setTimeout(() => inputEl.select(), 100);
+            });
+
+            // 5. 关闭逻辑
+            const close = (value) => {
+                overlay.classList.add('opacity-0');
+                modal.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    overlay.remove();
+                    resolve(value);
+                }, 200);
+            };
+
+            // 绑定事件
+            modal.querySelector('#app-modal-cancel').onclick = () => close(null);
+            
+            const confirmBtn = modal.querySelector('#app-modal-confirm');
+            const handleConfirm = () => {
+                const val = inputEl.value.trim();
+                if (!val) {
+                    // 如果为空，给个红色边框震动提示，而不是直接关闭
+                    inputEl.classList.add('ring-2', 'ring-red-500', 'animate-pulse');
+                    setTimeout(() => inputEl.classList.remove('ring-2', 'ring-red-500', 'animate-pulse'), 500);
+                    return;
+                }
+                close(val);
+            };
+            confirmBtn.onclick = handleConfirm;
+
+            // 快捷键支持
+            overlay.onclick = (e) => { if (e.target === overlay) close(null); };
+            
+            const keyHandler = (e) => {
+                if (!document.body.contains(overlay)) {
+                    document.removeEventListener('keydown', keyHandler);
+                    return;
+                }
+                if (e.key === 'Escape') close(null);
+                // 在 textarea 中，Ctrl+Enter 提交 (单按 Enter 是换行)
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleConfirm();
+            };
+            document.addEventListener('keydown', keyHandler);
+        });
+    },
+
     // 内部方法：构建模态框
     _createModal(title, content, isConfirm) {
         return new Promise((resolve) => {

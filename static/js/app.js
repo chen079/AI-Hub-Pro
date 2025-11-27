@@ -22,6 +22,7 @@ createApp({
             showAbout: false, // [新增] 控制关于弹窗显示
             isUserAtBottom: true,
             showAdvancedApi: false,
+            showSystemPromptModal: false,
 
             // --- 数据 ---
             authForm: { username: '', password: '' },
@@ -98,6 +99,13 @@ createApp({
             const s = this.sessions.find(x => x.id === this.currentSessionId);
             return s ? s.title : '新对话';
         },
+        totalSessionTokens() {
+            if (!this.messages || this.messages.length === 0) return 0;
+            return this.messages.reduce((acc, msg) => {
+                // 累加每一条消息的 token (包括 user 和 assistant)
+                return acc + this.estimateTokens(msg.content);
+            }, 0);
+        },
         // [核心修复]：分组模型逻辑
         groupedModels() {
             const groups = {};
@@ -138,6 +146,21 @@ createApp({
     },
 
     methods: {
+        // 【新增】Token 估算算法
+        estimateTokens(text) {
+            if (!text) return 0;
+            // 1. 统计中文字符 (CJK)
+            // 中文通常占 1.5 ~ 2 个 Token，这里取 1.6 做估算
+            const cjkMatch = text.match(/[\u4e00-\u9fa5]/g);
+            const cjkCount = cjkMatch ? cjkMatch.length : 0;
+            
+            // 2. 统计非中文字符 (英文、数字、符号)
+            // 英文通常 4 个字符 = 1 Token，即 0.25
+            const otherCount = text.length - cjkCount;
+            
+            // 3. 计算总和 (向上取整)
+            return Math.ceil(cjkCount * 1.6 + otherCount * 0.25);
+        },
         // ===========================
         // 1. 认证与设置模块
         // ===========================
@@ -253,13 +276,19 @@ createApp({
         // [新增] 3. 编辑消息
         async editMessage(index) {
             const msg = this.messages[index];
-            // 如果内容太长，prompt 体验不好，但对于简单编辑足够了
-            // 进阶做法是把气泡变成 textarea，这里先用 prompt 实现
-            const newContent = prompt("编辑消息内容：", msg.content);
+            
+            // 使用自定义 Input 弹窗
+            const newContent = await AppUI.input(
+                "编辑消息内容",           // 标题
+                msg.content,             // 默认值 (当前内容)
+                "请输入新的消息内容..."   // placeholder
+            );
 
-            if (newContent !== null && newContent.trim() !== "") {
+            // 如果用户点击确定且内容不为空 (AppUI.input 返回 null 代表取消)
+            if (newContent !== null) {
                 msg.content = newContent;
                 await this.saveCurrentSessionData();
+                AppUI.toast('消息已修改', 'success');
             }
         },
 
@@ -304,15 +333,19 @@ createApp({
             const session = this.sessions.find(s => s.id === id);
             if (!session) return;
 
-            // 2. 弹出输入框
-            const newTitle = prompt("重命名对话：", session.title);
+            // 2. 弹出自定义输入框
+            const newTitle = await AppUI.input(
+                "重命名对话",             // 标题
+                session.title,           // 默认值
+                "请输入新的对话标题"      // placeholder
+            );
 
-            // 3. 如果用户输入了内容并且不是空的
-            if (newTitle !== null && newTitle.trim() !== "") {
-                session.title = newTitle.trim();
-
+            // 3. 如果用户输入了内容
+            if (newTitle !== null) {
+                session.title = newTitle;
                 // 保存到 IndexedDB
                 await AppDB.saveSession(session);
+                AppUI.toast('重命名成功', 'success');
             }
         },
 
@@ -338,20 +371,40 @@ createApp({
                 );
 
                 if (res.success) {
-                    AppUI.toast("✅ " + res.message, 'success');
+                    AppUI.toast(res.message, 'success');
                     // 如果测试成功，自动刷新一下模型列表，方便用户选择
                     this.fetchModels();
                 } else {
-                    AppUI.toast("❌ " + res.message, 'error');
+                    AppUI.toast(res.message, 'error');
                 }
             } catch (e) {
-                AppUI.toast("❌ 请求发送失败，请检查网络连接", 'error');
+                AppUI.toast("请求发送失败，请检查网络连接", 'error');
                 console.error(e);
             } finally {
                 this.isTestingConnection = false;
             }
         },
+        async saveSystemPrompt() {
+            try {
+                // 保存设置
+                await AppAPI.saveSettings(this.settings);
+                this.showSystemPromptModal = false;
+                AppUI.toast('系统提示词已保存', 'success');
 
+                // 如果当前已经在对话中，可选：发送一条系统消息提示用户
+                if (this.messages.length > 0) {
+                    this.messages.push({
+                        role: 'assistant',
+                        content: `系统提示词已更新。接下来的回复将基于新人设：\n> ${this.settings.system_prompt || '默认助手'}`,
+                        model: 'System'
+                    });
+                    this.smartScrollToBottom();
+                }
+            } catch (e) {
+                AppUI.toast('保存失败', 'error');
+                console.error(e);
+            }
+        },
         async saveSettings() {
             this.settings.dark_mode = this.isDarkMode;
             await AppAPI.saveSettings(this.settings);
@@ -406,6 +459,11 @@ createApp({
             this.messages = [];
             this.inputMessage = '';
             this.attachedFiles = [];
+
+            // 【新增】强制重置状态，防止之前的对话卡住
+            this.isThinking = false;
+            this.isStreaming = false;
+
             if (window.innerWidth < 768) this.showSidebar = false;
         },
 
@@ -505,9 +563,16 @@ createApp({
                 const isLastUserMsg = (msg.role === 'user' && index === this.messages.length - 1);
                 const hasFiles = msg.files && msg.files.length > 0;
 
+                // 【新增逻辑】构建发送给 AI 的实际文本 = 显示的文本 + 隐藏的文档文本
+                let contentToSend = msg.content;
+                if (msg.role === 'user' && msg.parsed_context) {
+                    contentToSend += "\n" + msg.parsed_context;
+                }
+
                 if (isLastUserMsg && hasFiles) {
                     const contentParts = [];
-                    if (msg.content) contentParts.push({ type: "text", text: msg.content });
+                    // 使用 contentToSend 而不是 msg.content
+                    if (contentToSend) contentParts.push({ type: "text", text: contentToSend });
 
                     msg.files.forEach(f => {
                         if (f.type === 'image') {
@@ -515,15 +580,14 @@ createApp({
                         }
                     });
 
-                    // 只有文本
                     if (contentParts.length === 1 && contentParts[0].type === 'text') {
-                        return { role: msg.role, content: msg.content };
+                        return { role: msg.role, content: contentParts[0].text };
                     }
                     return { role: msg.role, content: contentParts };
                 }
 
-                // 历史消息只传文本
-                return { role: msg.role, content: msg.content };
+                // 历史消息只传文本 (同样使用 contentToSend)
+                return { role: msg.role, content: contentToSend };
             });
 
             // 2. 准备接收回复
@@ -564,12 +628,12 @@ createApp({
                     }
                     this.smartScrollToBottom();
                 },
-                onError: (err) => {
+                // ================= 【修复点 2】 =================
+                onError: async (err) => { // 注意：加上 async
                     this.isThinking = false;
                     this.isStreaming = false;
 
-                    // ================= [新增] 402 错误处理 =================
-                    // 如果错误信息包含 402 或 "点数不足"，显示提示并打开充值窗
+                    // 错误处理逻辑 (402 等)
                     if (err.includes("402") || err.includes("点数不足")) {
                         this.messages.push({
                             role: 'assistant',
@@ -580,8 +644,10 @@ createApp({
                     } else {
                         this.messages.push({ role: 'assistant', content: `Error: ${err}`, model: 'System' });
                     }
-                    // ======================================================
 
+                    // 重点：出错后也要保存会话！这样刷新后能在历史记录看到报错信息
+                    await this.saveCurrentSessionData();
+                    
                     this.smartScrollToBottom();
                 }
             });
@@ -607,7 +673,13 @@ createApp({
             // 2. [文档解析]
             // 如果有文档，先解析并将文本附加到 prompt 中
             // 注意：为了让“重新生成”也能带上文档内容，我们直接把解析后的文本拼接到消息里
+            // 2. [文档解析]
+            // 如果有文档，先解析并将文本附加到 prompt 中
             let finalPrompt = textContent;
+            
+            // 【新增变量】专门用来存解析后的长文本
+            let fullDocText = ""; 
+
             const docFiles = currentFiles.filter(f => f.type === 'doc');
 
             if (docFiles.length > 0) {
@@ -618,7 +690,8 @@ createApp({
                 for (let fileObj of docFiles) {
                     const extractedText = await AppAPI.parseDocument(fileObj.raw);
                     if (extractedText) {
-                        finalPrompt += `\n\n--- Document: ${fileObj.name} ---\n${extractedText}\n----------------\n`;
+                        // 【修改点】不再拼接到 finalPrompt，而是拼接到 fullDocText
+                        fullDocText += `\n\n--- Document: ${fileObj.name} ---\n${extractedText}\n----------------\n`;
                     }
                 }
                 // 移除临时提示
@@ -628,12 +701,19 @@ createApp({
             // 3. 推送用户消息上屏
             const userMsg = {
                 role: 'user',
-                content: finalPrompt, // 这里包含了文档内容，确保重试时有效
+                content: finalPrompt, // 这里只放用户输入的话 (例如："阅读这篇文献...")
+                
+                // 【新增字段】这里存放不显示的文档全文，Saved in DB automatically
+                parsed_context: fullDocText, 
+                
                 files: currentFiles,
                 model: this.settings.model
             };
             this.messages.push(userMsg);
             this.smartScrollToBottom(true);
+
+            // 用户发完消息立刻保存
+            await this.saveCurrentSessionData(); 
 
             // 4. 调用核心流式请求
             await this.streamResponse();
