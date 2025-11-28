@@ -386,48 +386,68 @@
         </div>
 
         <!-- ==================== [新增] 充值/点数 模态框 ==================== -->
+        <!-- ==================== [新增] 充值/点数 模态框 (科技蓝版) ==================== -->
         <div v-if="showTopUpModal" class="settings-modal-overlay" style="z-index: 250;"
             @click.self="showTopUpModal = false">
             <div
-                class="settings-modal flex flex-col animate-fade-in-up bg-white dark:bg-darkcard dark:text-gray-200 w-[90%] max-w-sm overflow-hidden">
+                class="settings-modal flex flex-col animate-fade-in-up bg-white dark:bg-darkcard dark:text-gray-200 w-[90%] max-w-sm overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xl">
 
-                <!-- 头部 -->
-                <div class="bg-gradient-to-r from-yellow-400 to-orange-500 p-6 text-white relative">
+                <!-- 头部：蓝紫渐变，模拟“能量核心” -->
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white relative overflow-hidden">
+                    <!-- 增加一个装饰性的背景圆圈 -->
+                    <div
+                        class="absolute -top-10 -right-10 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl pointer-events-none">
+                    </div>
+
                     <button @click="showTopUpModal = false"
-                        class="absolute top-4 right-4 text-white/80 hover:text-white">
+                        class="absolute top-4 right-4 text-white/70 hover:text-white transition-colors">
                         <i class="fas fa-times text-xl"></i>
                     </button>
-                    <div class="text-sm font-medium opacity-90 mb-1">[[t('balance_title')]]</div>
-                    <div class="text-4xl font-bold flex items-baseline">
-                        <i class="fas fa-coins mr-2 text-2xl"></i> [[ userPoints ]]
+                    <div class="text-xs font-bold opacity-80 mb-1 uppercase tracking-wider">[[t('balance_title')]]</div>
+                    <!-- 这里的文案建议改为 "CURRENT ENERGY" 或 "当前算力" -->
+                    <div class="text-4xl font-bold flex items-baseline relative z-10">
+                        <i class="fas fa-bolt mr-3 text-2xl animate-pulse text-yellow-300"></i>
+                        <span class="font-mono tracking-tight">[[ userPoints ]]</span>
                     </div>
                 </div>
 
                 <!-- 套餐列表 -->
                 <div class="p-6 space-y-4">
-                    <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">[[t('topup_select')]]</p>
+                    <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">[[t('topup_select')]]</p>
 
                     <div class="grid grid-cols-1 gap-3">
                         <button v-for="opt in topUpOptions" :key="opt.price" @click="handleTopUp(opt.points)"
-                            class="flex justify-between items-center p-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 hover:border-yellow-400 dark:hover:border-yellow-500 bg-white dark:bg-darkinput transition group">
-                            <div class="flex items-center gap-3">
+                            class="relative flex justify-between items-center p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-darkinput transition-all duration-200 group hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5">
+
+                            <div class="flex items-center gap-4">
+                                <!-- 图标容器 -->
                                 <div
-                                    class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400 group-hover:scale-110 transition">
-                                    <i class="fas fa-gem"></i>
+                                    class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                                    <!-- 根据点数多少显示不同图标 -->
+                                    <i class="fas"
+                                        :class="opt.points > 10000 ? 'fa-layer-group' : 'fa-battery-full'"></i>
                                 </div>
                                 <div class="text-left">
-                                    <div class="font-bold text-gray-800 dark:text-gray-200">[[ opt.points ]] 点</div>
-                                    <div class="text-xs text-gray-400">[[ opt.label ]]</div>
+                                    <div
+                                        class="font-bold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                        [[ opt.points ]] <span class="text-xs font-normal opacity-70">Energy</span>
+                                    </div>
+                                    <div class="text-[10px] text-gray-400">[[ opt.label ]]</div>
                                 </div>
                             </div>
-                            <div class="text-lg font-bold text-blue-600 dark:text-blue-400">[[ opt.price ]]</div>
+
+                            <div
+                                class="text-lg font-bold text-gray-700 dark:text-gray-300 font-mono group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                                [[ opt.price ]]
+                            </div>
                         </button>
                     </div>
                 </div>
 
+                <!-- 底部 -->
                 <div
-                    class="p-4 bg-gray-50 dark:bg-darkinput border-t dark:border-darkborder text-center text-xs text-gray-400">
-                    [[t('demo_tip')]]
+                    class="p-4 bg-gray-50 dark:bg-black/20 border-t dark:border-darkborder text-center text-[10px] text-gray-400">
+                    <i class="fas fa-shield-alt mr-1"></i> [[t('demo_tip')]]
                 </div>
             </div>
         </div>
@@ -612,8 +632,8 @@
 
             <!-- 左侧边栏 -->
             <!-- 左侧边栏 -->
-            <div class="bg-gray-50 dark:bg-darkcard dark:border-darkborder flex flex-col shadow-lg z-20 transition-all duration-300 flex-shrink-0 border-gray-200"
-                :class="showSidebar ? 'w-64 translate-x-0 border-r' : 'w-0 -translate-x-full border-none md:w-0 md:translate-x-0 overflow-hidden'">
+            <div class="bg-gray-50 dark:bg-darkcard dark:border-darkborder flex flex-col shadow-lg transition-transform duration-300 flex-shrink-0 border-gray-200 h-full absolute md:relative z-30"
+                :class="showSidebar ? 'w-64 translate-x-0 border-r' : '-translate-x-full w-64 md:w-0 md:translate-x-0 md:border-none md:overflow-hidden'">
 
                 <div class="p-4 flex justify-between items-center flex-shrink-0 h-16 border-b dark:border-darkborder">
                     <button @click="startNewChat"
@@ -692,32 +712,39 @@
                     </div>
                 </div>
             </div>
+            <div v-if="showSidebar" @click="showSidebar = false"
+                class="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm transition-opacity">
+            </div>
 
             <!-- 右侧内容区域 -->
             <div class="flex-1 flex flex-col bg-white dark:bg-darkbg relative overflow-hidden w-full">
 
-                <!-- 修改为 (增加 text-gray-600 并确保 z-index 够高) -->
-                <div class="absolute top-4 left-4 z-[40] md:hidden" v-if="!showSidebar">
-                    <button @click="showSidebar = !showSidebar"
-                        class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white p-2 rounded-lg bg-white/80 dark:bg-black/40 backdrop-blur-md shadow-sm border border-gray-200 dark:border-gray-700">
-                        <i class="fas fa-bars fa-lg"></i>
-                    </button>
-                </div>
 
                 <!-- ================================================== -->
                 <!-- 场景 1: 欢迎页 (New Chat Mode) -->
                 <!-- ================================================== -->
                 <div v-if="isNewChatMode"
-                    class="flex-1 flex flex-col items-center justify-center p-4 relative w-full h-full">
+                    class="flex-1 flex flex-col items-center justify-center p-4 relative w-full h-full bg-grid-pattern">
+
+                    <!-- 【新增】欢迎页左上角菜单按钮 -->
+                    <div class="absolute top-4 left-4 z-20 md:hidden">
+                        <button @click="showSidebar = true"
+                            class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-300 bg-white dark:bg-darkinput rounded-lg shadow-sm border border-gray-200 dark:border-darkborder">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                    </div>
 
                     <!-- [修正] 右上角悬浮点数 (仅在付费模式显示) -->
                     <div v-if="paidMode" class="absolute top-4 right-4 z-20">
                         <div @click="showTopUpModal = true"
-                            class="cursor-pointer group flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded-full border border-yellow-200 dark:border-yellow-700/50 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition shadow-sm">
-                            <i class="fas fa-coins text-yellow-500 animate-pulse"></i>
-                            <span class="text-sm font-bold text-yellow-700 dark:text-yellow-400">[[ userPoints ]]</span>
+                            class="cursor-pointer group flex items-center gap-2 bg-white/80 dark:bg-blue-900/20 px-4 py-1.5 rounded-full border border-blue-100 dark:border-blue-800 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all backdrop-blur-md">
+                            <!-- 图标改为闪电，更有科技感 -->
                             <i
-                                class="fas fa-plus-circle text-xs text-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                class="fas fa-bolt text-blue-500 dark:text-blue-400 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-bold font-mono text-blue-700 dark:text-blue-300">[[ userPoints
+                                ]]</span>
+                            <i
+                                class="fas fa-plus-circle text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1"></i>
                         </div>
                     </div>
 
@@ -761,10 +788,8 @@
                                 <div class="flex items-center gap-3">
                                     <!-- [恢复] 深度思考按钮 -->
                                     <button @click="toggleDeepThinking"
-                                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border select-none group"
-                                        :class="isDeepThinkingEnabled ? 
-                    'bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/50 shadow-sm' : 
-                    'bg-white dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'">
+                                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border select-none group relative overflow-hidden"
+                                        :class="isDeepThinkingEnabled ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/30' : 'bg-white dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-50'">
                                         <i class="fas fa-brain" :class="{'animate-pulse': isDeepThinkingEnabled}"></i>
                                         <span>[[ t('deep_think_btn') ]]</span>
                                         <!-- R1/O1 标识 (可选) -->
@@ -834,11 +859,20 @@
                 <!-- ================================================== -->
                 <div v-else class="flex-1 flex flex-col h-full w-full">
                     <!-- 顶部栏 (只在聊天模式显示) -->
-                    <div class="h-14 border-b dark:border-darkborder flex items-center justify-between bg-white/80 dark:bg-darkbg/90 backdrop-blur z-10 transition-all"
-                        :class="!showSidebar ? 'pl-14 pr-4' : 'px-4'">
+                    <div
+                        class="h-14 border-b dark:border-darkborder flex items-center justify-between bg-white/80 dark:bg-darkbg/90 backdrop-blur z-10 transition-all px-4">
 
-                        <div class="flex items-center text-gray-700 dark:text-white font-medium truncate max-w-[50%]">
-                            <span>[[ currentSessionTitle ]]</span>
+                        <div class="flex items-center gap-3 overflow-hidden max-w-[60%]">
+                            <!-- 【新增】聊天页菜单按钮 (仅移动端显示) -->
+                            <button @click="showSidebar = true"
+                                class="md:hidden flex-shrink-0 text-gray-500 hover:text-blue-600 dark:text-gray-400 transition">
+                                <i class="fas fa-bars fa-lg"></i>
+                            </button>
+
+                            <!-- 标题 -->
+                            <div class="text-gray-700 dark:text-white font-medium truncate">
+                                [[ currentSessionTitle ]]
+                            </div>
                         </div>
 
                         <!-- 【新增】Token 计数器 -->
@@ -855,9 +889,9 @@
                                 <i class="fas fa-user-cog"></i>
                             </button>
                             <div v-if="paidMode" @click="showTopUpModal = true"
-                                class="cursor-pointer group flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1.5 rounded-full border border-yellow-200 dark:border-yellow-700/50 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">
-                                <i class="fas fa-coins text-yellow-500"></i>
-                                <span class="text-sm font-bold text-yellow-700 dark:text-yellow-400">[[ userPoints
+                                class="cursor-pointer group flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
+                                <i class="fas fa-bolt text-blue-500 text-xs"></i>
+                                <span class="text-xs font-bold font-mono text-blue-600 dark:text-blue-300">[[ userPoints
                                     ]]</span>
                             </div>
                             <div class="text-xs text-gray-400 flex items-center gap-2 hidden md:flex">
@@ -981,7 +1015,8 @@
                     </div>
 
                     <!-- 底部输入框 (聊天模式) -->
-                    <div class="p-4 bg-white dark:bg-darkbg border-t dark:border-darkborder">
+                    <div
+                        class="p-4 bg-white/80 dark:bg-darkbg/90 backdrop-blur-md shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.05)] dark:shadow-none z-10 bottom-0 w-full left-0">
                         <div
                             class="max-w-3xl mx-auto relative border border-gray-300 dark:border-darkborder rounded-2xl bg-gray-50 dark:bg-darkinput focus-within:ring-2 focus-within:ring-blue-500 transition-all">
 

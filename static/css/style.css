@@ -2,6 +2,23 @@
     display: none !important;
 }
 
+.z-30 {
+    z-index: 30;
+}
+
+.z-20 {
+    z-index: 20;
+}
+
+body {
+    /* 原有样式保持... */
+    font-feature-settings: "tnum";
+    /* 数字等宽，防止倒计时数字跳动 */
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.015em;
+    /* 稍微紧凑一点，显得更现代 */
+}
+
 /* =========================================
    Markdown 样式重构 (修复排版丑陋问题)
    ========================================= */
@@ -491,7 +508,8 @@ html.dark .hljs-meta {
 /* 覆盖原本 pre 的 margin，因为现在 margin 由 wrapper 控制 */
 .code-block-wrapper pre {
     margin: 0 !important;
-    padding-top: 35px !important; /* 顶部留出空间给按钮 */
+    padding-top: 35px !important;
+    /* 顶部留出空间给按钮 */
 }
 
 /* 复制按钮 */
@@ -502,7 +520,8 @@ html.dark .hljs-meta {
     z-index: 10;
     padding: 4px 8px;
     font-size: 12px;
-    color: #6b7280; /* text-gray-500 */
+    color: #6b7280;
+    /* text-gray-500 */
     background-color: rgba(255, 255, 255, 0.5);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 4px;
@@ -515,8 +534,9 @@ html.dark .hljs-meta {
 
 .copy-code-btn:hover {
     background-color: white;
-    color: #2563eb; /* blue-600 */
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    color: #2563eb;
+    /* blue-600 */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* 暗黑模式适配 */
@@ -525,6 +545,7 @@ html.dark .hljs-meta {
     background-color: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.1);
 }
+
 .dark .copy-code-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
     color: #60a5fa;
@@ -541,4 +562,14 @@ html.dark .hljs-meta {
     pointer-events: none;
     font-weight: bold;
     text-transform: uppercase;
+}
+
+/* 极简点阵背景 */
+.bg-grid-pattern {
+    background-color: transparent;
+    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+.dark .bg-grid-pattern {
+    background-image: radial-gradient(#374151 1px, transparent 1px);
 }
